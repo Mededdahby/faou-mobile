@@ -1,15 +1,20 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { Card, EmptyState, Screen, StatusPill } from "@/components/ui";
+  Avatar,
+  Card,
+  EmptyState,
+  IconButton,
+  Screen,
+  SearchBar,
+  Skeleton,
+  StatusPill,
+} from "@/components/ui";
+import { Chip, PageHeader } from "@/components/domain/DetailKit";
 import { useLiveClients } from "@/convex/hooks";
+import { callPhone } from "@/lib/links";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
 const filters = [
@@ -40,60 +45,67 @@ export default function ClientsScreen() {
 
   return (
     <Screen scroll>
-      <View style={styles.headerRow}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>Administration</Text>
-          <Text style={styles.title}>Clients</Text>
-          <Text style={styles.subtitle}>
-            {(clients ?? []).length} client{(clients ?? []).length === 1 ? "" : "s"} au total
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push("/clients/editeur")}
-          style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.newLabel}>+ Nouveau</Text>
-        </Pressable>
-      </View>
+      <PageHeader
+        title="Clients"
+        subtitle={`${(clients ?? []).length} client${
+          (clients ?? []).length === 1 ? "" : "s"
+        } dans votre répertoire`}
+        right={
+          <IconButton
+            icon="add"
+            label="Nouveau client"
+            dark
+            onPress={() => router.push("/clients/editeur")}
+          />
+        }
+      />
 
-      <TextInput
+      <SearchBar
         value={search}
         onChangeText={setSearch}
-        placeholder="Rechercher un client…"
-        placeholderTextColor={colors.mutedSoft}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={styles.search}
+        placeholder="Nom, email, téléphone ou ville…"
       />
 
       <View style={styles.filters}>
-        {filters.map((item) => {
-          const active = filter === item.key;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => setFilter(item.key)}
-              style={[styles.filter, active && styles.filterActive]}
-            >
-              <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {filters.map((item) => (
+          <Chip
+            key={item.key}
+            label={item.label}
+            active={filter === item.key}
+            onPress={() => setFilter(item.key)}
+          />
+        ))}
       </View>
 
       {clients === undefined ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.list}>
+          {[0, 1, 2].map((index) => (
+            <Card key={index} style={styles.card}>
+              <View style={styles.row}>
+                <Skeleton width={46} height={46} radius={23} />
+                <View style={styles.skeletonBody}>
+                  <Skeleton width="50%" height={14} />
+                  <Skeleton width="35%" height={10} />
+                </View>
+                <Skeleton width={54} height={22} radius={11} />
+              </View>
+            </Card>
+          ))}
         </View>
       ) : visible.length === 0 ? (
         <Card style={styles.emptyCard}>
           <EmptyState
             icon="people-outline"
             title="Aucun client"
-            description="Les clients de ce filtre apparaîtront ici."
+            description={
+              search
+                ? "Aucun client ne correspond à cette recherche."
+                : "Ajoutez votre premier client pour relier projets et documents."
+            }
+            actionLabel={search ? "Effacer la recherche" : "Créer un client"}
+            onAction={
+              search ? () => setSearch("") : () => router.push("/clients/editeur")
+            }
           />
         </Card>
       ) : (
@@ -101,27 +113,45 @@ export default function ClientsScreen() {
           {visible.map((client) => (
             <Pressable
               key={client.id}
+              accessibilityRole="button"
               onPress={() => router.push(`/clients/${client.id}`)}
               style={({ pressed }) => pressed && styles.pressed}
             >
               <Card style={styles.card}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {(client.name || "?").slice(0, 1).toUpperCase()}
-                  </Text>
+                <View style={styles.row}>
+                  <Avatar name={client.name} size={46} />
+                  <View style={styles.body}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {client.name}
+                    </Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {[client.city, client.phone].filter(Boolean).join(" · ") || "—"}
+                    </Text>
+                  </View>
+                  <StatusPill
+                    label={client.status === "inactive" ? "Inactif" : "Actif"}
+                    tone={client.status === "inactive" ? "slate" : "green"}
+                  />
                 </View>
-                <View style={styles.body}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {client.name}
+                <View style={styles.footer}>
+                  <Text style={styles.email} numberOfLines={1}>
+                    {client.email || "Aucun email"}
                   </Text>
-                  <Text style={styles.meta} numberOfLines={1}>
-                    {[client.city, client.phone].filter(Boolean).join(" · ") || "—"}
-                  </Text>
+                  <View style={styles.footerActions}>
+                    {client.phone ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Appeler ${client.name}`}
+                        onPress={() => void callPhone(client.phone)}
+                        hitSlop={6}
+                        style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+                      >
+                        <Ionicons name="call-outline" size={15} color={colors.primaryDark} />
+                      </Pressable>
+                    ) : null}
+                    <Ionicons name="chevron-forward" size={16} color={colors.mutedSoft} />
+                  </View>
                 </View>
-                <StatusPill
-                  label={client.status === "inactive" ? "Inactif" : "Actif"}
-                  tone={client.status === "inactive" ? "slate" : "green"}
-                />
               </Card>
             </Pressable>
           ))}
@@ -132,126 +162,72 @@ export default function ClientsScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  header: {
-    flex: 1,
-    paddingTop: spacing.md,
-    gap: spacing.xs,
-  },
-  newButton: {
-    marginTop: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  newLabel: {
-    fontSize: fontSize.small,
-    fontWeight: "700",
-    color: colors.white,
-  },
-  eyebrow: {
-    fontSize: fontSize.caption,
-    fontWeight: "600",
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: colors.primary,
-  },
-  title: {
-    fontSize: fontSize.display,
-    fontWeight: "700",
-    letterSpacing: -0.6,
-    color: colors.ink,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.muted,
-  },
-  search: {
-    marginTop: spacing.lg,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.body,
-    color: colors.ink,
-  },
   filters: {
-    marginTop: spacing.md,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
-  },
-  filter: {
-    borderRadius: radius.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  filterActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  filterLabel: {
-    fontSize: fontSize.caption + 1,
-    fontWeight: "600",
-    color: colors.muted,
-  },
-  filterLabelActive: {
-    color: colors.white,
-  },
-  loading: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
-  },
-  emptyCard: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   list: {
     marginTop: spacing.lg,
     gap: spacing.md,
   },
   card: {
+    gap: spacing.md,
+  },
+  row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-  },
-  avatar: {
-    height: 40,
-    width: 40,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#E0F2FE",
-  },
-  avatarText: {
-    fontSize: fontSize.body,
-    fontWeight: "700",
-    color: colors.primary,
   },
   body: {
     flex: 1,
     gap: 2,
   },
   name: {
-    fontSize: fontSize.title,
+    fontSize: fontSize.body,
     fontWeight: "600",
     color: colors.ink,
   },
   meta: {
-    fontSize: fontSize.small,
+    fontSize: fontSize.caption + 1,
     color: colors.muted,
   },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+  },
+  email: {
+    flex: 1,
+    fontSize: fontSize.caption + 1,
+    color: colors.mutedSoft,
+  },
+  footerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  action: {
+    height: 30,
+    width: 30,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceMuted,
+  },
+  skeletonBody: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  emptyCard: {
+    marginTop: spacing.lg,
+  },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
 });

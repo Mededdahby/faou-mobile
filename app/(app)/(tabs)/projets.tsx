@@ -1,17 +1,10 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { Card, EmptyState, Screen, StatusPill } from "@/components/ui";
+import { StyleSheet, Text, View } from "react-native";
+import { Card, EmptyState, IconButton, Screen, SearchBar, Skeleton } from "@/components/ui";
+import { Chip, PageHeader } from "@/components/domain/DetailKit";
+import { ProjectCard } from "@/components/domain/ProjectCard";
 import { useLiveProjects } from "@/convex/hooks";
-import { formatDate, formatMoney } from "@/lib/format";
-import { getProjectStatus } from "@/lib/status";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
 const filters = [
@@ -28,6 +21,10 @@ export default function ProjetsScreen() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
 
+  const activeCount = (projects ?? []).filter(
+    (project) => project.status !== "completed" && project.status !== "cancelled",
+  ).length;
+
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return (projects ?? []).filter((project) => {
@@ -43,245 +40,118 @@ export default function ProjetsScreen() {
     });
   }, [projects, filter, search]);
 
-  const activeCount = (projects ?? []).filter(
-    (project) => project.status !== "completed" && project.status !== "cancelled",
-  ).length;
-
   return (
     <Screen scroll>
-      <View style={styles.headerRow}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>Administration</Text>
-          <Text style={styles.title}>Projets</Text>
-          <Text style={styles.subtitle}>
-            {activeCount} projet{activeCount === 1 ? "" : "s"} actif
-            {activeCount === 1 ? "" : "s"} sur {(projects ?? []).length}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push("/projets/editeur")}
-          style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.newLabel}>+ Nouveau</Text>
-        </Pressable>
-      </View>
+      <PageHeader
+        title="Projets"
+        subtitle={`${activeCount} chantier${activeCount === 1 ? "" : "s"} en cours sur ${
+          (projects ?? []).length
+        } au total`}
+        right={
+          <IconButton
+            icon="add"
+            label="Nouveau projet"
+            dark
+            onPress={() => router.push("/projets/editeur")}
+          />
+        }
+      />
 
-      <TextInput
+      <SearchBar
         value={search}
         onChangeText={setSearch}
-        placeholder="Rechercher un projet, un client, une ville…"
-        placeholderTextColor={colors.mutedSoft}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={styles.search}
+        placeholder="Projet, client ou ville…"
       />
 
       <View style={styles.filters}>
-        {filters.map((item) => {
-          const active = filter === item.key;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => setFilter(item.key)}
-              style={[styles.filter, active && styles.filterActive]}
-            >
-              <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {filters.map((item) => (
+          <Chip
+            key={item.key}
+            label={item.label}
+            active={filter === item.key}
+            onPress={() => setFilter(item.key)}
+          />
+        ))}
       </View>
 
       {projects === undefined ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.list}>
+          {[0, 1].map((index) => (
+            <Card key={index} style={styles.skeletonCard}>
+              <Skeleton height={158} radius={radius.md} />
+              <View style={styles.skeletonBody}>
+                <Skeleton width="55%" height={14} />
+                <Skeleton width="80%" height={8} />
+                <Skeleton width="40%" height={10} />
+              </View>
+            </Card>
+          ))}
         </View>
       ) : visible.length === 0 ? (
         <Card style={styles.emptyCard}>
           <EmptyState
             icon="briefcase-outline"
             title="Aucun projet"
-            description="Les projets de ce filtre apparaîtront ici."
+            description={
+              search
+                ? "Aucun projet ne correspond à cette recherche."
+                : "Créez un projet pour suivre son avancement et ses échéances."
+            }
+            actionLabel={search ? "Effacer la recherche" : "Créer un projet"}
+            onAction={
+              search ? () => setSearch("") : () => router.push("/projets/editeur")
+            }
           />
         </Card>
       ) : (
         <View style={styles.list}>
-          {visible.map((project) => {
-            const status = getProjectStatus(project.status);
-            return (
-              <Pressable
-                key={project.id}
-                onPress={() => router.push(`/projets/${project.id}`)}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Card style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {project.name}
-                    </Text>
-                    <StatusPill label={status.label} tone={status.tone} />
-                  </View>
-                  <Text style={styles.meta} numberOfLines={1}>
-                    {project.clientName || "Sans client"}
-                    {project.city ? ` · ${project.city}` : ""}
-                  </Text>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${status.progress}%` }]} />
-                  </View>
-                  <View style={styles.cardBottom}>
-                    <Text style={styles.amount}>{formatMoney(project.budgetCents)}</Text>
-                    <Text style={styles.due}>
-                      {project.dueDate ? `Échéance ${formatDate(project.dueDate)}` : "Sans échéance"}
-                    </Text>
-                  </View>
-                </Card>
-              </Pressable>
-            );
-          })}
+          {visible.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onPress={() => router.push(`/projets/${project.id}`)}
+            />
+          ))}
         </View>
       )}
+
+      {projects && projects.length > 0 ? (
+        <Text style={styles.footerHint}>
+          {visible.length} projet{visible.length === 1 ? "" : "s"} affiché
+          {visible.length === 1 ? "" : "s"}
+        </Text>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  header: {
-    flex: 1,
-    paddingTop: spacing.md,
-    gap: spacing.xs,
-  },
-  newButton: {
-    marginTop: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  newLabel: {
-    fontSize: fontSize.small,
-    fontWeight: "700",
-    color: colors.white,
-  },
-  eyebrow: {
-    fontSize: fontSize.caption,
-    fontWeight: "600",
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: colors.primary,
-  },
-  title: {
-    fontSize: fontSize.display,
-    fontWeight: "700",
-    letterSpacing: -0.6,
-    color: colors.ink,
-  },
-  subtitle: {
-    fontSize: fontSize.small,
-    color: colors.muted,
-  },
-  search: {
-    marginTop: spacing.lg,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.body,
-    color: colors.ink,
-  },
   filters: {
-    marginTop: spacing.md,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  filter: {
-    borderRadius: radius.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+  list: {
+    marginTop: spacing.lg,
+    gap: spacing.lg,
   },
-  filterActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
+  skeletonCard: {
+    padding: 0,
+    overflow: "hidden",
+    gap: 0,
   },
-  filterLabel: {
-    fontSize: fontSize.caption + 1,
-    fontWeight: "600",
-    color: colors.muted,
-  },
-  filterLabelActive: {
-    color: colors.white,
-  },
-  loading: {
-    paddingVertical: spacing.xxl,
-    alignItems: "center",
+  skeletonBody: {
+    gap: spacing.sm,
+    padding: spacing.lg,
   },
   emptyCard: {
     marginTop: spacing.lg,
   },
-  list: {
+  footerHint: {
     marginTop: spacing.lg,
-    gap: spacing.md,
-  },
-  card: {
-    gap: spacing.sm,
-  },
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  name: {
-    flex: 1,
-    fontSize: fontSize.title,
-    fontWeight: "600",
-    color: colors.ink,
-  },
-  meta: {
-    fontSize: fontSize.small,
-    color: colors.muted,
-  },
-  progressTrack: {
-    height: 5,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-  },
-  cardBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  amount: {
-    fontSize: fontSize.small,
-    fontWeight: "600",
-    color: colors.ink,
-    fontVariant: ["tabular-nums"],
-  },
-  due: {
+    textAlign: "center",
     fontSize: fontSize.caption,
     color: colors.mutedSoft,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

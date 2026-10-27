@@ -1,17 +1,22 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { Keyboard, StyleSheet } from "react-native";
 import type { Project, ProjectPriority, ProjectStatus } from "@/api/types";
+import { ErrorBlock, LoadingBlock } from "@/components/domain/DetailKit";
 import {
-  Chip,
-  ErrorBlock,
-  LoadingBlock,
-  PageHeader,
-} from "@/components/domain/DetailKit";
-import { Card, Field, PrimaryButton, Screen } from "@/components/ui";
+  FormChoice,
+  FormField,
+  FormFooter,
+  FormSection,
+  KeyboardForm,
+} from "@/components/form/KeyboardForm";
+import { SelectField } from "@/components/form/SelectField";
+import { Screen } from "@/components/ui";
+import type { FieldInputRef } from "@/components/ui/Field";
 import { useLiveClients, useLiveProjects } from "@/convex/hooks";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useCreateProject, useUpdateProject } from "@/hooks/queries";
-import { colors, fontSize, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 
 const projectTypes = [
   { value: "cuisine", label: "Cuisine" },
@@ -51,6 +56,13 @@ interface FormState {
   city: string;
 }
 
+interface FormErrors {
+  name?: string;
+  startDate?: string;
+  dueDate?: string;
+  budget?: string;
+}
+
 const emptyForm: FormState = {
   name: "",
   clientId: "",
@@ -68,7 +80,7 @@ const emptyForm: FormState = {
 
 function budgetToCents(value: string) {
   const amount = Number(value.replace(/\s/g, "").replace(",", "."));
-  if (!Number.isFinite(amount) || amount < 0) return 0;
+  if (!Number.isFinite(amount) || amount < 0) return Number.NaN;
   return Math.round(amount * 100);
 }
 
@@ -78,7 +90,9 @@ function centsToInput(cents: number) {
 
 function isDate(value: string) {
   if (!value) return true;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime());
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function initialFromProject(project: Project): FormState {
@@ -152,20 +166,93 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const [form, setForm] = useState<FormState>(initial);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [serverError, setServerError] = useState("");
+
+  const { markDirty: markFormDirty, allowLeave } = useUnsavedChangesGuard();
+
+  const nameRef = useRef<FieldInputRef>(null);
+  const clientNameRef = useRef<FieldInputRef>(null);
+  const startDateRef = useRef<FieldInputRef>(null);
+  const dueDateRef = useRef<FieldInputRef>(null);
+  const budgetRef = useRef<FieldInputRef>(null);
+  const cityRef = useRef<FieldInputRef>(null);
+  const addressRef = useRef<FieldInputRef>(null);
+  const notesRef = useRef<FieldInputRef>(null);
+
+  const clientOptions = (clients ?? []).map((client) => ({
+    id: client.id,
+    label: client.name,
+    subtitle: [client.city, client.phone].filter(Boolean).join(" · "),
+  }));
+
+  function markDirty() {
+    markFormDirty();
+    setServerError("");
+  }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    markDirty();
     setForm((current) => ({ ...current, [key]: value }));
+    const errorKey: keyof FormErrors | null =
+      key === "name" || key === "startDate" || key === "dueDate" || key === "budget"
+        ? (key as keyof FormErrors)
+        : null;
+    if (!errorKey) return;
+    setErrors((current) =>
+      current[errorKey] ? { ...current, [errorKey]: undefined } : current,
+    );
+  }
+
+  function selectClient(id: string | null) {
+    markDirty();
+    if (!id) {
+      setForm((current) => ({ ...current, clientId: "" }));
+      return;
+    }
+    const client = clients?.find((item) => item.id === id);
+    setForm((current) => ({
+      ...current,
+      clientId: id,
+      clientName: client?.name ?? current.clientName,
+      city: current.city || client?.city || "",
+      address: current.address || client?.address || "",
+    }));
   }
 
   async function handleSave() {
-    setError("");
+    setServerError("");
+
+    const nextErrors: FormErrors = {};
     if (form.name.trim().length < 2) {
-      setError("Le nom du projet est requis.");
+      nextErrors.name = "Indiquez le nom du projet.";
+    }
+    if (!isDate(form.startDate)) {
+      nextErrors.startDate = "Utilisez le format AAAA-MM-JJ.";
+    }
+    if (!isDate(form.dueDate)) {
+      nextErrors.dueDate = "Utilisez le format AAAA-MM-JJ.";
+    }
+    const budgetCents = form.budget.trim() ? budgetToCents(form.budget) : 0;
+    if (Number.isNaN(budgetCents)) {
+      nextErrors.budget = "Indiquez un budget valide.";
+    }
+
+    setErrors(nextErrors);
+    if (nextErrors.name) {
+      nameRef.current?.focus();
       return;
     }
-    if (!isDate(form.startDate) || !isDate(form.dueDate)) {
-      setError("Les dates doivent respecter le format AAAA-MM-JJ.");
+    if (nextErrors.startDate) {
+      startDateRef.current?.focus();
+      return;
+    }
+    if (nextErrors.dueDate) {
+      dueDateRef.current?.focus();
+      return;
+    }
+    if (nextErrors.budget) {
+      budgetRef.current?.focus();
       return;
     }
 
@@ -178,18 +265,21 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
       priority: form.priority,
       startDate: form.startDate || undefined,
       dueDate: form.dueDate || undefined,
-      budgetCents: budgetToCents(form.budget),
+      budgetCents,
       notes: form.notes,
       address: form.address,
       city: form.city,
     };
 
+    Keyboard.dismiss();
     try {
       if (id) {
         await updateProject.mutateAsync({ id, ...payload });
+        allowLeave();
         router.back();
       } else {
         const result = await createProject.mutateAsync(payload);
+        allowLeave();
         if (result.id) {
           router.replace(`/projets/${result.id}`);
         } else {
@@ -197,180 +287,189 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
         }
       }
     } catch (mutationError) {
-      setError(
+      setServerError(
         mutationError instanceof Error ? mutationError.message : "Enregistrement impossible.",
       );
     }
   }
 
   return (
-    <Screen scroll>
-      <PageHeader
-        title={id ? "Modifier le projet" : "Nouveau projet"}
-        subtitle="Suivez le chantier du prospect à l'installation."
-      />
+    <>
+      <Stack.Screen options={{ title: id ? "Modifier le projet" : "Nouveau projet" }} />
+      <KeyboardForm
+        footer={
+          <FormFooter
+            submitLabel={id ? "Enregistrer les modifications" : "Créer le projet"}
+            onSubmit={() => void handleSave()}
+            loading={createProject.isPending || updateProject.isPending}
+            error={serverError}
+          />
+        }
+      >
+        <FormSection
+          title="Informations"
+          description="Le nom et la nature du chantier. Les champs marqués * sont requis."
+        >
+          <FormField
+            label="Nom du projet"
+            required
+            inputRef={nameRef}
+            value={form.name}
+            onChangeText={(value) => update("name", value)}
+            placeholder="Cuisine — Nom du client"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => clientNameRef.current?.focus()}
+            error={errors.name}
+          />
+          <FormChoice
+            label="Type de projet"
+            value={form.type}
+            options={projectTypes}
+            onChange={(value) => update("type", value)}
+          />
+          <FormChoice
+            label="Priorité"
+            value={form.priority}
+            options={priorities}
+            onChange={(value) => update("priority", value as ProjectPriority)}
+          />
+        </FormSection>
 
-      <Card style={styles.card}>
-        <Field
-          label="Nom du projet"
-          value={form.name}
-          onChangeText={(value) => update("name", value)}
-          placeholder="Cuisine — Nom du client"
-        />
-
-        <View style={styles.block}>
-          <Text style={styles.label}>Client</Text>
-          <View style={styles.chips}>
-            <Chip
-              label="Sans client"
-              active={!form.clientId}
-              onPress={() =>
-                setForm((current) => ({ ...current, clientId: "", clientName: "" }))
-              }
-            />
-            {(clients ?? []).map((client) => (
-              <Chip
-                key={client.id}
-                label={client.name}
-                active={form.clientId === client.id}
-                onPress={() =>
-                  setForm((current) => ({
-                    ...current,
-                    clientId: client.id,
-                    clientName: client.name,
-                    city: current.city || client.city,
-                    address: current.address || client.address,
-                  }))
-                }
-              />
-            ))}
-          </View>
-          <Field
+        <FormSection
+          title="Client"
+          description="Associez le chantier à un client existant, ou saisissez simplement son nom."
+        >
+          <SelectField
+            label="Client associé"
+            value={form.clientId || null}
+            options={clientOptions}
+            onChange={selectClient}
+            placeholder="Choisir un client"
+            title="Choisir un client"
+            hint="La recherche filtre par nom, ville ou téléphone."
+            allowClear
+          />
+          <FormField
             label="Nom affiché du client"
+            optional
+            inputRef={clientNameRef}
             value={form.clientName}
             onChangeText={(value) => update("clientName", value)}
             placeholder="Nom du client"
+            autoCapitalize="words"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => startDateRef.current?.focus()}
+            hint="Utilisé dans les listes et sur les documents."
           />
-        </View>
+        </FormSection>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Type</Text>
-          <View style={styles.chips}>
-            {projectTypes.map((item) => (
-              <Chip
-                key={item.value}
-                label={item.label}
-                active={form.type === item.value}
-                onPress={() => update("type", item.value)}
-              />
-            ))}
-          </View>
-        </View>
+        <FormSection title="Avancement" description="Où en est le chantier aujourd’hui ?">
+          <FormChoice
+            label="Statut"
+            value={form.status}
+            options={projectStatuses}
+            onChange={(value) => update("status", value as ProjectStatus)}
+          />
+        </FormSection>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Statut</Text>
-          <View style={styles.chips}>
-            {projectStatuses.map((item) => (
-              <Chip
-                key={item.value}
-                label={item.label}
-                active={form.status === item.value}
-                onPress={() => update("status", item.value)}
-              />
-            ))}
-          </View>
-        </View>
+        <FormSection title="Planning" description="Les dates restent modifiables à tout moment.">
+          <FormField
+            label="Date de début"
+            optional
+            inputRef={startDateRef}
+            value={form.startDate}
+            onChangeText={(value) => update("startDate", value)}
+            placeholder="AAAA-MM-JJ"
+            maxLength={10}
+            keyboardType="numbers-and-punctuation"
+            autoCapitalize="none"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => dueDateRef.current?.focus()}
+            error={errors.startDate}
+            hint="Format AAAA-MM-JJ, par exemple 2026-11-15."
+          />
+          <FormField
+            label="Date d’échéance"
+            optional
+            inputRef={dueDateRef}
+            value={form.dueDate}
+            onChangeText={(value) => update("dueDate", value)}
+            placeholder="AAAA-MM-JJ"
+            maxLength={10}
+            keyboardType="numbers-and-punctuation"
+            autoCapitalize="none"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => budgetRef.current?.focus()}
+            error={errors.dueDate}
+          />
+        </FormSection>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Priorité</Text>
-          <View style={styles.chips}>
-            {priorities.map((item) => (
-              <Chip
-                key={item.value}
-                label={item.label}
-                active={form.priority === item.value}
-                onPress={() => update("priority", item.value)}
-              />
-            ))}
-          </View>
-        </View>
-
-        <Field
-          label="Budget (MAD)"
-          value={form.budget}
-          onChangeText={(value) => update("budget", value)}
-          placeholder="0"
-          keyboardType="decimal-pad"
-        />
-        <Field
-          label="Date de début"
-          value={form.startDate}
-          onChangeText={(value) => update("startDate", value)}
-          placeholder="AAAA-MM-JJ"
-        />
-        <Field
-          label="Date d'échéance"
-          value={form.dueDate}
-          onChangeText={(value) => update("dueDate", value)}
-          placeholder="AAAA-MM-JJ"
-        />
-        <Field
-          label="Ville"
-          value={form.city}
-          onChangeText={(value) => update("city", value)}
-          placeholder="Casablanca"
-        />
-        <Field
-          label="Adresse du chantier"
-          value={form.address}
-          onChangeText={(value) => update("address", value)}
-          placeholder="Rue, quartier, numéro"
-        />
-        <Field
-          label="Notes"
-          value={form.notes}
-          onChangeText={(value) => update("notes", value)}
-          placeholder="Détails, matériaux, contraintes…"
-          multiline
-          style={styles.notes}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton
-          label={id ? "Enregistrer les modifications" : "Créer le projet"}
-          onPress={() => void handleSave()}
-          loading={createProject.isPending || updateProject.isPending}
-        />
-      </Card>
-    </Screen>
+        <FormSection
+          title="Budget & détails"
+          description="Le budget est estimatif. Tous les champs de cette section sont optionnels."
+        >
+          <FormField
+            label="Budget (MAD)"
+            optional
+            inputRef={budgetRef}
+            value={form.budget}
+            onChangeText={(value) => update("budget", value)}
+            placeholder="0"
+            keyboardType="decimal-pad"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => cityRef.current?.focus()}
+            error={errors.budget}
+          />
+          <FormField
+            label="Ville"
+            optional
+            inputRef={cityRef}
+            value={form.city}
+            onChangeText={(value) => update("city", value)}
+            placeholder="Casablanca"
+            autoCapitalize="words"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => addressRef.current?.focus()}
+          />
+          <FormField
+            label="Adresse du chantier"
+            optional
+            inputRef={addressRef}
+            value={form.address}
+            onChangeText={(value) => update("address", value)}
+            placeholder="Rue, quartier, numéro"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => notesRef.current?.focus()}
+            hint="Sert au bouton Itinéraire."
+          />
+          <FormField
+            label="Notes"
+            optional
+            inputRef={notesRef}
+            value={form.notes}
+            onChangeText={(value) => update("notes", value)}
+            placeholder="Détails techniques, matériaux, contraintes…"
+            multiline
+            style={styles.notes}
+          />
+        </FormSection>
+      </KeyboardForm>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginTop: spacing.lg,
-    gap: spacing.md,
-  },
-  block: {
-    gap: spacing.sm,
-  },
-  label: {
-    fontSize: fontSize.small,
-    fontWeight: "600",
-    color: colors.ink,
-  },
-  chips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
   notes: {
-    minHeight: 100,
+    minHeight: 110,
     paddingTop: spacing.md,
     textAlignVertical: "top",
-  },
-  error: {
-    fontSize: fontSize.small,
-    color: colors.danger,
+    lineHeight: 21,
   },
 });

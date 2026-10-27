@@ -5,13 +5,13 @@ import type { Tone } from "@/lib/status";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
 const tonePalette: Record<Tone, { background: string; foreground: string }> = {
-  blue: { background: "#E0F2FE", foreground: "#0369A1" },
-  green: { background: "#DCFCE7", foreground: "#15803D" },
-  amber: { background: "#FEF3C7", foreground: "#B45309" },
-  red: { background: "#FEE2E2", foreground: "#B91C1C" },
-  slate: { background: "#F1F5F9", foreground: "#475569" },
-  violet: { background: "#EDE9FE", foreground: "#6D28D9" },
-  orange: { background: "#FFEDD5", foreground: "#C2410C" },
+  blue: { background: colors.primarySoft, foreground: colors.primaryDark },
+  green: { background: colors.successSoft, foreground: colors.success },
+  amber: { background: colors.warningSoft, foreground: colors.warning },
+  red: { background: colors.dangerSoft, foreground: colors.danger },
+  slate: { background: colors.surfaceMuted, foreground: colors.muted },
+  violet: { background: colors.violetSoft, foreground: colors.violet },
+  orange: { background: colors.accentSoft, foreground: colors.cta },
 };
 
 interface StatCardProps {
@@ -19,20 +19,22 @@ interface StatCardProps {
   value: string;
   icon: ComponentProps<typeof Ionicons>["name"];
   tone?: Tone;
+  hint?: string;
 }
 
-export function StatCard({ label, value, icon, tone = "blue" }: StatCardProps) {
+export function StatCard({ label, value, icon, tone = "blue", hint }: StatCardProps) {
   const palette = tonePalette[tone];
 
   return (
     <View style={styles.card}>
       <View style={[styles.iconCircle, { backgroundColor: palette.background }]}>
-        <Ionicons name={icon} size={16} color={palette.foreground} />
+        <Ionicons name={icon} size={17} color={palette.foreground} />
       </View>
       <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
       <Text style={styles.label}>{label}</Text>
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -49,22 +51,27 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   iconCircle: {
-    height: 30,
-    width: 30,
-    borderRadius: 15,
+    height: 32,
+    width: 32,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.xs,
   },
   value: {
-    fontSize: fontSize.heading,
+    fontSize: fontSize.title + 1,
     fontWeight: "700",
+    letterSpacing: -0.4,
     color: colors.ink,
     fontVariant: ["tabular-nums"],
   },
   label: {
-    fontSize: fontSize.caption,
-    lineHeight: 14,
+    fontSize: fontSize.caption + 1,
+    fontWeight: "500",
     color: colors.muted,
+  },
+  hint: {
+    fontSize: fontSize.micro,
+    color: colors.mutedSoft,
   },
 });

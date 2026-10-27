@@ -20,7 +20,7 @@ import {
   QuickAction,
   QuickActions,
 } from "@/components/domain/DetailKit";
-import { useLiveDocument } from "@/convex/hooks";
+import { useLiveDocument, useLiveProjects } from "@/convex/hooks";
 import {
   useConvertQuote,
   useDeleteDocument,
@@ -62,6 +62,7 @@ function parseAmount(value: string) {
 export default function DevisDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const document = useLiveDocument(id);
+  const projects = useLiveProjects();
 
   if (document === undefined) {
     return (
@@ -79,10 +80,22 @@ export default function DevisDetailScreen() {
     );
   }
 
-  return <DocumentDetail key={document._id} document={document} />;
+  return (
+    <DocumentDetail
+      key={document._id}
+      document={document}
+      linkedProject={projects?.find((project) => project.id === document.projectId)}
+    />
+  );
 }
 
-function DocumentDetail({ document }: { document: CommercialDocument }) {
+function DocumentDetail({
+  document,
+  linkedProject,
+}: {
+  document: CommercialDocument;
+  linkedProject?: { id: string; name: string };
+}) {
   const router = useRouter();
   const updateFinance = useUpdateDocumentFinance();
   const convertQuote = useConvertQuote();
@@ -271,6 +284,14 @@ function DocumentDetail({ document }: { document: CommercialDocument }) {
         <InfoRow label="Type de projet" value={document.client.projectType} />
         {document.sourceQuoteNumber ? (
           <InfoRow label="Devis d'origine" value={document.sourceQuoteNumber} />
+        ) : null}
+        {linkedProject ? (
+          <InfoRow
+            label="Projet lié"
+            value={linkedProject.name}
+            icon="briefcase-outline"
+            onPress={() => router.push(`/projets/${linkedProject.id}`)}
+          />
         ) : null}
       </Card>
 
@@ -505,7 +526,7 @@ const styles = StyleSheet.create({
   moneyItem: {
     flex: 1,
     borderRadius: radius.md,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfaceMuted,
     padding: spacing.md,
     gap: 2,
   },
@@ -548,14 +569,14 @@ const styles = StyleSheet.create({
   },
   settleButton: {
     borderRadius: radius.md,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: colors.successSoft,
     padding: spacing.md,
     alignItems: "center",
   },
   settleLabel: {
     fontSize: fontSize.small,
     fontWeight: "700",
-    color: "#047857",
+    color: colors.success,
   },
   help: {
     fontSize: fontSize.small,
@@ -587,8 +608,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dangerButton: {
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.dangerSoft,
   },
   secondaryLabel: {
     fontSize: fontSize.body,

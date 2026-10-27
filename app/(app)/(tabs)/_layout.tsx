@@ -38,19 +38,13 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.mutedSoft,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
         tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{ title: "Accueil", tabBarIcon: tabIcon("home-outline", "home") }}
-      />
-      <Tabs.Screen
-        name="demandes"
-        options={{
-          title: "Demandes",
-          tabBarIcon: tabIcon("mail-unread-outline", "mail-unread"),
-        }}
       />
       <Tabs.Screen
         name="projets"
@@ -60,17 +54,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="devis"
-        options={{
-          title: "Devis",
-          tabBarIcon: tabIcon("document-text-outline", "document-text"),
-        }}
-      />
-      <Tabs.Screen
         name="clients"
         options={{
           title: "Clients",
           tabBarIcon: tabIcon("people-outline", "people"),
+        }}
+      />
+      <Tabs.Screen
+        name="planning"
+        options={{
+          title: "Planning",
+          tabBarIcon: tabIcon("calendar-outline", "calendar"),
+        }}
+      />
+      <Tabs.Screen
+        name="plus"
+        options={{
+          title: "Plus",
+          tabBarIcon: tabIcon("apps-outline", "apps"),
         }}
       />
     </Tabs>
@@ -82,9 +83,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 6,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
+    letterSpacing: 0.1,
+  },
+  tabItem: {
+    paddingBottom: 2,
   },
 });

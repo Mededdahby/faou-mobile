@@ -32,11 +32,13 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="demandes/index" options={{ title: "Demandes" }} />
       <Stack.Screen name="demandes/[id]" options={{ title: "Demande" }} />
       <Stack.Screen name="projets/[id]" options={{ title: "Projet" }} />
       <Stack.Screen name="projets/editeur" options={{ title: "Projet" }} />
       <Stack.Screen name="clients/[id]" options={{ title: "Client" }} />
       <Stack.Screen name="clients/editeur" options={{ title: "Client" }} />
+      <Stack.Screen name="devis/index" options={{ title: "Devis & factures" }} />
       <Stack.Screen name="devis/[id]" options={{ title: "Document" }} />
       <Stack.Screen name="devis/editeur" options={{ title: "Devis" }} />
       <Stack.Screen name="reglages" options={{ title: "Réglages", presentation: "modal" }} />

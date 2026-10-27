@@ -1,7 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
-type Variant = "primary" | "danger" | "outline";
+type Variant = "primary" | "danger" | "outline" | "accent";
 
 interface PrimaryButtonProps {
   label: string;
@@ -9,7 +9,19 @@ interface PrimaryButtonProps {
   loading?: boolean;
   disabled?: boolean;
   variant?: Variant;
+  style?: StyleProp<ViewStyle>;
 }
+
+const variants: Record<Variant, { background: string; border?: string; foreground: string }> = {
+  primary: { background: colors.primary, foreground: colors.white },
+  danger: { background: colors.danger, foreground: colors.white },
+  accent: { background: colors.ink, foreground: colors.white },
+  outline: {
+    background: colors.surface,
+    border: colors.border,
+    foreground: colors.ink,
+  },
+};
 
 export function PrimaryButton({
   label,
@@ -17,9 +29,10 @@ export function PrimaryButton({
   loading = false,
   disabled = false,
   variant = "primary",
+  style,
 }: PrimaryButtonProps) {
   const isDisabled = disabled || loading;
-  const isOutline = variant === "outline";
+  const palette = variants[variant];
 
   return (
     <Pressable
@@ -29,15 +42,19 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        variant === "danger" && styles.danger,
-        isOutline && styles.outline,
+        {
+          backgroundColor: palette.background,
+          borderColor: palette.border ?? palette.background,
+          borderWidth: palette.border ? 1 : 0,
+        },
         (pressed || isDisabled) && styles.inactive,
+        style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isOutline ? colors.ink : colors.white} />
+        <ActivityIndicator color={palette.foreground} />
       ) : (
-        <Text style={[styles.label, isOutline && styles.outlineLabel]}>{label}</Text>
+        <Text style={[styles.label, { color: palette.foreground }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -45,20 +62,11 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 50,
+    minHeight: 52,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.primary,
-  },
-  danger: {
-    backgroundColor: colors.danger,
-  },
-  outline: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   inactive: {
     opacity: 0.55,
@@ -66,9 +74,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.body,
     fontWeight: "600",
-    color: colors.white,
-  },
-  outlineLabel: {
-    color: colors.ink,
+    letterSpacing: 0.1,
   },
 });

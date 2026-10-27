@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   materialChip: {
     borderRadius: 10,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: spacing.sm,
     paddingVertical: 5,
     gap: 1,
@@ -357,8 +357,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dangerButton: {
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.dangerSoft,
   },
   secondaryLabel: {
     fontSize: fontSize.body,

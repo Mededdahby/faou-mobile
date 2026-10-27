@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.dangerSoft,
     padding: spacing.md,
   },
   errorText: {

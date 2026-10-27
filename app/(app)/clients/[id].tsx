@@ -323,8 +323,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dangerButton: {
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.dangerSoft,
   },
   secondaryLabel: {
     fontSize: fontSize.body,

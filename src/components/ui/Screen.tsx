@@ -1,5 +1,12 @@
-import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 import { colors, spacing } from "@/theme/tokens";
 
@@ -9,6 +16,7 @@ interface ScreenProps {
   padded?: boolean;
   edges?: Edge[];
   style?: StyleProp<ViewStyle>;
+  refreshControl?: ReactElement;
 }
 
 export function Screen({
@@ -17,6 +25,7 @@ export function Screen({
   padded = true,
   edges = ["top"],
   style,
+  refreshControl,
 }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safe} edges={edges}>
@@ -24,6 +33,10 @@ export function Screen({
         <ScrollView
           contentContainerStyle={[styles.scrollContent, padded && styles.padded, style]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          refreshControl={refreshControl}
         >
           {children}
         </ScrollView>
@@ -43,7 +56,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + 16,
   },
   padded: {
     paddingHorizontal: spacing.lg,

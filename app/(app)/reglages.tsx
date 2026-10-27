@@ -38,7 +38,7 @@ export default function ReglagesScreen() {
           <Text style={styles.value} selectable>
             {apiBaseUrl || "Non configurée"}
           </Text>
-          <Text style={styles.hint}>Définie par la variable EXPO_PUBLIC_API_URL.</Text>
+          <Text style={styles.hint}>Détectée depuis le serveur de développement, ou EXPO_PUBLIC_API_URL en production.</Text>
         </Card>
 
         <Card>

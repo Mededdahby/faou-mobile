@@ -12,7 +12,7 @@ import {
 } from "@/components/domain/DetailKit";
 import { useLiveClients, useLiveDocuments, useLiveProjects } from "@/convex/hooks";
 import { useDeleteProject, useUpdateProject } from "@/hooks/queries";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { callPhone, openDirections } from "@/lib/links";
 import { getDocumentStatus, getProjectStatus, priorityMeta } from "@/lib/status";
 import type { ProjectStatus } from "@/api/types";
@@ -242,6 +242,30 @@ export default function ProjetDetailScreen() {
       </Card>
 
       <Card style={styles.card}>
+        <Text style={styles.cardTitle}>Historique</Text>
+        <InfoRow
+          label="Créé le"
+          value={formatDateTime(project.created_at)}
+          icon="time-outline"
+        />
+        <InfoRow
+          label="Dernière mise à jour"
+          value={formatDateTime(project.updated_at)}
+          icon="refresh-outline"
+        />
+        <InfoRow
+          label="Démarrage prévu"
+          value={project.startDate ? formatDate(project.startDate) : "—"}
+          icon="calendar-outline"
+        />
+        <InfoRow
+          label="Échéance"
+          value={project.dueDate ? formatDate(project.dueDate) : "—"}
+          icon="flag-outline"
+        />
+      </Card>
+
+      <Card style={styles.card}>
         <View style={styles.cardTitleRow}>
           <Text style={styles.cardTitle}>Documents</Text>
           <Pressable
@@ -346,7 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.border,
   },
   stepDotDone: {
     backgroundColor: colors.primary,
@@ -407,7 +431,7 @@ const styles = StyleSheet.create({
   moneyItem: {
     flex: 1,
     borderRadius: radius.md,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfaceMuted,
     padding: spacing.md,
     gap: 2,
   },
@@ -462,8 +486,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dangerButton: {
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.dangerSoft,
   },
   secondaryLabel: {
     fontSize: fontSize.body,

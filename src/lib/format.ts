@@ -13,6 +13,18 @@ export function formatMoney(cents = 0) {
   return `${grouped},${decimals} MAD`;
 }
 
+export function formatMoneyShort(cents = 0) {
+  const value = Math.round(cents) / 100;
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 0,
+  }).format(value);
+  return `${formatted} MAD`;
+}
+
+export function formatDateShort(value: string | number | Date) {
+  return format(toDate(value), "d MMM", { locale: fr });
+}
+
 export function formatDate(value: string | number | Date) {
   return format(toDate(value), "dd/MM/yyyy", { locale: fr });
 }

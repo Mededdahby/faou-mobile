@@ -23,7 +23,7 @@ export function PageHeader({
   return (
     <View style={styles.pageHeader}>
       <View style={styles.pageHeaderText}>
-        <Text style={styles.eyebrow}>Administration</Text>
+        <Text style={styles.eyebrow}>FAOU DESIGN</Text>
         <Text style={styles.pageTitle}>{title}</Text>
         {subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}
       </View>
@@ -118,6 +118,7 @@ export function Chip({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      hitSlop={4}
       onPress={onPress}
       style={[styles.chip, active && styles.chipActive]}
     >
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: fontSize.display,
     fontWeight: "700",
-    letterSpacing: -0.6,
+    letterSpacing: -0.8,
     color: colors.ink,
   },
   pageSubtitle: {
@@ -245,12 +246,14 @@ const styles = StyleSheet.create({
     color: colors.mutedSoft,
   },
   chip: {
+    minHeight: 34,
+    justifyContent: "center",
     borderRadius: radius.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   chipActive: {
     backgroundColor: colors.ink,

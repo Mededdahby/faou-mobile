@@ -1,22 +1,31 @@
 import { StyleSheet, Text, View } from "react-native";
 import type { Tone } from "@/lib/status";
-import { fontSize, radius, spacing } from "@/theme/tokens";
+import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
 const tones: Record<Tone, { background: string; foreground: string }> = {
-  blue: { background: "#E0F2FE", foreground: "#0369A1" },
-  green: { background: "#DCFCE7", foreground: "#15803D" },
-  amber: { background: "#FEF3C7", foreground: "#B45309" },
-  red: { background: "#FEE2E2", foreground: "#B91C1C" },
-  slate: { background: "#F1F5F9", foreground: "#475569" },
-  violet: { background: "#EDE9FE", foreground: "#6D28D9" },
-  orange: { background: "#FFEDD5", foreground: "#C2410C" },
+  blue: { background: colors.primarySoft, foreground: colors.primaryDark },
+  green: { background: colors.successSoft, foreground: colors.success },
+  amber: { background: colors.warningSoft, foreground: colors.warning },
+  red: { background: colors.dangerSoft, foreground: colors.danger },
+  slate: { background: colors.surfaceMuted, foreground: colors.muted },
+  violet: { background: colors.violetSoft, foreground: colors.violet },
+  orange: { background: colors.accentSoft, foreground: colors.cta },
 };
 
-export function StatusPill({ label, tone = "slate" }: { label: string; tone?: Tone }) {
+export function StatusPill({
+  label,
+  tone = "slate",
+  dot = true,
+}: {
+  label: string;
+  tone?: Tone;
+  dot?: boolean;
+}) {
   const palette = tones[tone];
 
   return (
     <View style={[styles.pill, { backgroundColor: palette.background }]}>
+      {dot ? <View style={[styles.dot, { backgroundColor: palette.foreground }]} /> : null}
       <Text style={[styles.label, { color: palette.foreground }]}>{label}</Text>
     </View>
   );
@@ -25,12 +34,21 @@ export function StatusPill({ label, tone = "slate" }: { label: string; tone?: To
 const styles = StyleSheet.create({
   pill: {
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 3,
+    paddingVertical: 4,
+  },
+  dot: {
+    height: 5,
+    width: 5,
+    borderRadius: 3,
   },
   label: {
     fontSize: fontSize.caption,
     fontWeight: "600",
+    letterSpacing: 0.1,
   },
 });

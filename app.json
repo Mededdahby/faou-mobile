@@ -11,7 +11,8 @@
       "bundleIdentifier": "com.faoudesign.admin"
     },
     "android": {
-      "package": "com.faoudesign.admin"
+      "package": "com.faoudesign.admin",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "bundler": "metro"
