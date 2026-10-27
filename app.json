@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "FAOU Admin",
+    "slug": "faou-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "faoudesign-admin",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.faoudesign.admin"
+    },
+    "android": {
+      "package": "com.faoudesign.admin"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Autoriser FAOU Admin à utiliser Face ID pour déverrouiller l'application."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}
