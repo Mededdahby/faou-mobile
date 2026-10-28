@@ -1,6 +1,17 @@
 import { anyApi } from "convex/server";
 import { useQuery } from "convex/react";
-import type { Client, CommercialDocument, Project, Submission } from "@/api/types";
+import type {
+  Client,
+  CommercialDocument,
+  DocumentApproval,
+  Project,
+  Payment,
+  ProjectActivity,
+  ProjectPhoto,
+  ProjectTask,
+  Submission,
+  TeamMember,
+} from "@/api/types";
 import { convexAdminSecret, isConvexConfigured } from "./client";
 
 const convexApi = anyApi;
@@ -46,4 +57,54 @@ export function useLiveDocument(id: string | undefined) {
     convexApi.records.getDocument,
     isConvexConfigured && id ? { ...secretArgs, id } : skip,
   ) as CommercialDocument | null | undefined;
+}
+
+export function useLiveProjectPhotos(projectId: string | undefined) {
+  return useQuery(
+    convexApi.mobileTools.listProjectPhotos,
+    isConvexConfigured && projectId
+      ? { ...secretArgs, projectId }
+      : skip,
+  ) as ProjectPhoto[] | undefined;
+}
+
+export function useLiveProjectActivity(projectId: string | undefined, limit = 8) {
+  return useQuery(
+    convexApi.mobileTools.listProjectActivity,
+    isConvexConfigured && projectId
+      ? { ...secretArgs, projectId, limit }
+      : skip,
+  ) as ProjectActivity[] | undefined;
+}
+
+export function useLiveTeamMembers(activeOnly = true) {
+  return useQuery(
+    convexApi.mobileTools.listTeamMembers,
+    isConvexConfigured ? { secret: convexAdminSecret, activeOnly } : skip,
+  ) as TeamMember[] | undefined;
+}
+
+export function useLiveProjectTasks(projectId: string | undefined) {
+  return useQuery(
+    convexApi.mobileTools.listProjectTasks,
+    isConvexConfigured && projectId ? { ...secretArgs, projectId } : skip,
+  ) as ProjectTask[] | undefined;
+}
+
+export function useLivePayments(documentId: string | undefined) {
+  return useQuery(
+    convexApi.mobileTools.listPayments,
+    isConvexConfigured && documentId
+      ? { ...secretArgs, documentId }
+      : skip,
+  ) as Payment[] | undefined;
+}
+
+export function useLiveDocumentApproval(documentId: string | undefined) {
+  return useQuery(
+    convexApi.mobileTools.getDocumentApproval,
+    isConvexConfigured && documentId
+      ? { ...secretArgs, documentId }
+      : skip,
+  ) as DocumentApproval | null | undefined;
 }

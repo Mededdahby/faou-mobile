@@ -144,6 +144,16 @@ export default function ProjetDetailScreen() {
           disabled={!address && !city}
         />
         <QuickAction
+          icon="images-outline"
+          label="Photos"
+          onPress={() => router.push(`/projets/${project.id}/photos`)}
+        />
+        <QuickAction
+          icon="checkbox-outline"
+          label="Tâches"
+          onPress={() => router.push(`/projets/${project.id}/tasks`)}
+        />
+        <QuickAction
           icon="document-text-outline"
           label="Nouveau devis"
           onPress={() =>

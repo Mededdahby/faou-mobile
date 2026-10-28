@@ -34,7 +34,14 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="demandes/index" options={{ title: "Demandes" }} />
       <Stack.Screen name="demandes/[id]" options={{ title: "Demande" }} />
-      <Stack.Screen name="projets/[id]" options={{ title: "Projet" }} />
+      <Stack.Screen name="projets/[id]/index" options={{ title: "Projet" }} />
+      <Stack.Screen name="projets/[id]/photos/index" options={{ title: "Photos" }} />
+      <Stack.Screen name="projets/[id]/photos/nouveau" options={{ title: "Nouvelle photo" }} />
+      <Stack.Screen name="projets/[id]/photos/rapport" options={{ title: "Rapport" }} />
+      <Stack.Screen name="projets/[id]/tasks/index" options={{ title: "Tâches" }} />
+      <Stack.Screen name="projets/[id]/tasks/editeur" options={{ title: "Tâche" }} />
+      <Stack.Screen name="equipe/index" options={{ title: "Équipe" }} />
+      <Stack.Screen name="equipe/editeur" options={{ title: "Membre" }} />
       <Stack.Screen name="projets/editeur" options={{ title: "Projet" }} />
       <Stack.Screen name="clients/[id]" options={{ title: "Client" }} />
       <Stack.Screen name="clients/editeur" options={{ title: "Client" }} />

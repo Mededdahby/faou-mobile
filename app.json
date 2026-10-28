@@ -26,7 +26,15 @@
           "faceIDPermission": "Autoriser FAOU Admin à utiliser Face ID pour déverrouiller l'application."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Autoriser FAOU Admin à accéder à vos photos pour documenter les chantiers.",
+          "cameraPermission": "Autoriser FAOU Admin à prendre des photos des chantiers.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

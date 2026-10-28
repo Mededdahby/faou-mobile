@@ -1,13 +1,27 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import type { CommercialDocument, DocumentStatus } from "@/api/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type {
+  CommercialDocument,
+  DocumentStatus,
+  Payment,
+  PaymentMethod,
+} from "@/api/types";
+import { api } from "@/api/endpoints";
 import { Card, Field, PrimaryButton, Screen, StatusPill } from "@/components/ui";
 import { DateField } from "@/components/form/DateField";
 import {
@@ -19,7 +33,12 @@ import {
   QuickAction,
   QuickActions,
 } from "@/components/domain/DetailKit";
-import { useLiveDocument, useLiveProjects } from "@/convex/hooks";
+import {
+  useLiveDocument,
+  useLiveDocumentApproval,
+  useLivePayments,
+  useLiveProjects,
+} from "@/convex/hooks";
 import {
   useConvertQuote,
   useDeleteDocument,
@@ -27,7 +46,7 @@ import {
 } from "@/hooks/queries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { callPhone, openDirections, sendEmail } from "@/lib/links";
-import { shareDocumentPdf } from "@/lib/pdf";
+import { shareDocumentPdf, sharePaymentReceiptPdf } from "@/lib/pdf";
 import { ShareDocumentSheet } from "@/components/domain/ShareDocumentSheet";
 import { getDocumentStatus } from "@/lib/status";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
@@ -53,9 +72,29 @@ function documentTotal(items: { amountCents: number }[]) {
   return items.reduce((sum, item) => sum + item.amountCents, 0);
 }
 
-function parseAmount(value: string) {
+const paymentMethods: Record<string, string> = {
+  cash: "Espèces",
+  bank_transfer: "Virement",
+  check: "Chèque",
+  card: "Carte",
+  other: "Autre",
+};
+
+const paymentOptions: { value: PaymentMethod; label: string }[] = [
+  { value: "cash", label: "Espèces" },
+  { value: "bank_transfer", label: "Virement" },
+  { value: "check", label: "Chèque" },
+  { value: "card", label: "Carte" },
+  { value: "other", label: "Autre" },
+];
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseMoney(value: string) {
   const amount = Number(value.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : NaN;
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : Number.NaN;
 }
 
 export default function DevisDetailScreen() {
@@ -100,18 +139,23 @@ function DocumentDetail({
   const convertQuote = useConvertQuote();
   const deleteDocument = useDeleteDocument();
 
-  const [payment, setPayment] = useState(
-    document.amountPaidCents ? String(document.amountPaidCents / 100) : "",
+  const payments = useLivePayments(document._id);
+  const approval = useLiveDocumentApproval(
+    document.kind === "quote" ? document._id : undefined,
   );
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [dueDate, setDueDate] = useState(document.dueDate ?? "");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
 
   const isInvoice = document.kind === "invoice";
   const status = getDocumentStatus(document.status);
   const total = documentTotal(document.items);
   const paid = Math.min(Math.max(document.amountPaidCents ?? 0, 0), total);
   const balance = Math.max(total - paid, 0);
+  const paymentSum = (payments ?? []).reduce((sum, payment) => sum + payment.amountCents, 0);
   const statusOptions = isInvoice ? invoiceStatuses : quoteStatuses;
 
   async function changeStatus(next: DocumentStatus) {
@@ -123,20 +167,45 @@ function DocumentDetail({
     }
   }
 
-  async function handlePayment(amountCents: number) {
-    if (Number.isNaN(amountCents) || amountCents < 0) {
-      Alert.alert("Montant invalide", "Saisissez un montant valide.");
-      return;
-    }
-    if (amountCents > total) {
-      Alert.alert("Montant invalide", "Le paiement ne peut pas dépasser le total.");
-      return;
-    }
+  async function handleReceipt(payment: Payment) {
+    setReceiptLoadingId(payment.id);
     try {
-      await updateFinance.mutateAsync({ id: document._id, amountPaidCents: amountCents });
+      await sharePaymentReceiptPdf(payment.id, payment.receiptNumber);
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Paiement impossible.");
+      Alert.alert(
+        "Erreur",
+        error instanceof Error ? error.message : "Reçu indisponible.",
+      );
+    } finally {
+      setReceiptLoadingId(null);
     }
+  }
+
+  function confirmDeletePayment(payment: Payment) {
+    Alert.alert(
+      "Supprimer le paiement",
+      `${formatMoney(payment.amountCents)} seront retirés du total payé.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingPaymentId(payment.id);
+            try {
+              await api.payments.remove(payment.id);
+            } catch (error) {
+              Alert.alert(
+                "Erreur",
+                error instanceof Error ? error.message : "Suppression impossible.",
+              );
+            } finally {
+              setDeletingPaymentId(null);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function handleDueDate() {
@@ -325,33 +394,17 @@ function DocumentDetail({
               ]}
             />
           </View>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldGrow}>
-              <Field
-                label="Montant payé (MAD)"
-                value={payment}
-                onChangeText={setPayment}
-                placeholder="0"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={styles.fieldButton}>
-              <PrimaryButton
-                label="Valider"
-                onPress={() => void handlePayment(parseAmount(payment))}
-                loading={updateFinance.isPending}
-              />
-            </View>
-          </View>
           {balance > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void handlePayment(total)}
-              style={styles.settleButton}
-            >
-              <Text style={styles.settleLabel}>Encaisser le solde ({formatMoney(balance)})</Text>
-            </Pressable>
-          ) : null}
+            <PrimaryButton
+              label="Encaisser un paiement"
+              onPress={() => setPaymentOpen(true)}
+            />
+          ) : (
+            <View style={styles.paidBadge}>
+              <Ionicons name="checkmark-circle-outline" size={17} color={colors.success} />
+              <Text style={styles.paidBadgeText}>Facture entièrement payée</Text>
+            </View>
+          )}
           <View style={styles.fieldRow}>
             <View style={styles.fieldGrow}>
               <DateField
@@ -383,6 +436,78 @@ function DocumentDetail({
         </Card>
       )}
 
+      {isInvoice ? (
+        <Card style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>Paiements</Text>
+            <Text style={styles.paymentCount}>{payments?.length ?? 0}</Text>
+          </View>
+          {payments === undefined ? (
+            <Text style={styles.paymentEmpty}>Chargement…</Text>
+          ) : payments.length === 0 ? (
+            <Text style={styles.paymentEmpty}>Aucun paiement enregistré.</Text>
+          ) : (
+            payments.map((payment, index) => {
+              const methodLabel = paymentMethods[payment.method] ?? payment.method;
+              return (
+                <View
+                  key={payment.id}
+                  style={[styles.paymentRow, index > 0 && styles.paymentDivider]}
+                >
+                  <View style={styles.paymentIcon}>
+                    <Ionicons name="cash-outline" size={17} color={colors.success} />
+                  </View>
+                  <View style={styles.paymentBody}>
+                    <Text style={styles.paymentReceipt}>
+                      {payment.receiptNumber || "Paiement"}
+                    </Text>
+                    <Text style={styles.paymentMeta}>
+                      {methodLabel} · {formatDate(payment.receivedAt)}
+                      {payment.reference ? ` · ${payment.reference}` : ""}
+                    </Text>
+                  </View>
+                  <Text style={styles.paymentAmount}>{formatMoney(payment.amountCents)}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Partager le reçu"
+                    onPress={() => void handleReceipt(payment)}
+                    disabled={receiptLoadingId === payment.id}
+                    hitSlop={6}
+                    style={({ pressed }) => [styles.paymentDelete, pressed && styles.pressed]}
+                  >
+                    {receiptLoadingId === payment.id ? (
+                      <Text style={styles.paymentDeleteLabel}>…</Text>
+                    ) : (
+                      <Ionicons name="receipt-outline" size={15} color={colors.primaryDark} />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Supprimer le paiement"
+                    onPress={() => confirmDeletePayment(payment)}
+                    disabled={deletingPaymentId === payment.id}
+                    hitSlop={6}
+                    style={({ pressed }) => [styles.paymentDelete, pressed && styles.pressed]}
+                  >
+                    {deletingPaymentId === payment.id ? (
+                      <Text style={styles.paymentDeleteLabel}>…</Text>
+                    ) : (
+                      <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                    )}
+                  </Pressable>
+                </View>
+              );
+            })
+          )}
+          {paid > paymentSum + 1 ? (
+            <Text style={styles.paymentLegacyNote}>
+              Un encaissement antérieur de {formatMoney(paid - paymentSum)} est inclus dans
+              le total payé.
+            </Text>
+          ) : null}
+        </Card>
+      ) : null}
+
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>Statut</Text>
         <View style={styles.chips}>
@@ -396,6 +521,64 @@ function DocumentDetail({
           ))}
         </View>
       </Card>
+
+      {!isInvoice ? (
+        <Card style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>Approbation</Text>
+            <StatusPill
+              label={
+                approval?.decision === "accepted"
+                  ? "Accepté"
+                  : approval?.decision === "refused"
+                    ? "Refusé"
+                    : "En attente"
+              }
+              tone={
+                approval?.decision === "accepted"
+                  ? "green"
+                  : approval?.decision === "refused"
+                    ? "red"
+                    : "slate"
+              }
+            />
+          </View>
+          {approval === undefined ? (
+            <Text style={styles.help}>Chargement…</Text>
+          ) : approval ? (
+            <>
+              <InfoRow label="Signataire" value={approval.signerName} icon="person-outline" />
+              <InfoRow
+                label="Date de validation"
+                value={formatDate(new Date(approval.createdAt).toISOString())}
+                icon="time-outline"
+              />
+              {approval.reason ? (
+                <InfoRow label="Motif" value={approval.reason} icon="chatbox-outline" />
+              ) : null}
+              {approval.signatureUrl ? (
+                <Image
+                  source={{ uri: approval.signatureUrl }}
+                  style={styles.signature}
+                  contentFit="contain"
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Text style={styles.help}>
+                Le client n’a pas encore accepté ou refusé ce devis. Partagez le lien
+                sécurisé pour recueillir sa signature.
+              </Text>
+              <PrimaryButton
+                label="Partager pour validation"
+                variant="outline"
+                onPress={() => setShareOpen(true)}
+              />
+            </>
+          )}
+        </Card>
+      ) : null}
 
 
       <View style={styles.actions}>
@@ -421,7 +604,179 @@ function DocumentDetail({
         document={shareOpen ? document : null}
         onClose={() => setShareOpen(false)}
       />
+      {paymentOpen ? (
+        <PaymentSheet
+          documentId={document._id}
+          balanceCents={balance}
+          onClose={() => setPaymentOpen(false)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function PaymentSheet({
+  documentId,
+  balanceCents,
+  onClose,
+}: {
+  documentId: string;
+  balanceCents: number;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [amount, setAmount] = useState(
+    balanceCents > 0 ? String(balanceCents / 100) : "",
+  );
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [receivedAt, setReceivedAt] = useState(today());
+  const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    const amountCents = parseMoney(amount);
+    if (Number.isNaN(amountCents)) {
+      setError("Saisissez un montant valide.");
+      return;
+    }
+    if (amountCents > balanceCents) {
+      setError("Le paiement ne peut pas dépasser le solde restant.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(receivedAt)) {
+      setError("Sélectionnez une date valide.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    Keyboard.dismiss();
+    try {
+      await api.payments.create({
+        documentId,
+        amountCents,
+        method,
+        receivedAt,
+        reference: reference.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      onClose();
+    } catch (mutationError) {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Paiement impossible.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <KeyboardAvoidingView
+        style={styles.sheetRoot}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <Pressable accessibilityLabel="Fermer" onPress={onClose} style={styles.overlay} />
+        <View
+          style={[
+            styles.paymentSheet,
+            { paddingBottom: Math.max(insets.bottom, spacing.lg) },
+          ]}
+        >
+          <View style={styles.handle} />
+          <View style={styles.paymentHeader}>
+            <View style={styles.paymentHeaderText}>
+              <Text style={styles.paymentTitle}>Encaisser un paiement</Text>
+              <Text style={styles.paymentSubtitle}>
+                Solde restant : {formatMoney(balanceCents)}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Fermer"
+              onPress={onClose}
+              hitSlop={8}
+              style={({ pressed }) => [styles.paymentClose, pressed && styles.pressed]}
+            >
+              <Ionicons name="close" size={18} color={colors.ink} />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.paymentForm}
+            contentContainerStyle={styles.paymentFormContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Field
+              label="Montant (MAD)"
+              value={amount}
+              onChangeText={(value) => {
+                setAmount(value);
+                setError("");
+              }}
+              placeholder="0"
+              keyboardType="decimal-pad"
+            />
+            <View style={styles.paymentMethods}>
+              {paymentOptions.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  active={method === option.value}
+                  onPress={() => {
+                    setMethod(option.value);
+                    setError("");
+                  }}
+                />
+              ))}
+            </View>
+            <DateField
+              label="Date du paiement"
+              required
+              value={receivedAt}
+              onChange={(value) => {
+                setReceivedAt(value ?? today());
+                setError("");
+              }}
+              placeholder="Choisir une date"
+              title="Date du paiement"
+            />
+            <Field
+              label="Référence"
+              optional
+              value={reference}
+              onChangeText={setReference}
+              placeholder="Numéro de virement, chèque…"
+            />
+            <Field
+              label="Notes"
+              optional
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Remarque interne"
+              multiline
+              style={styles.paymentNotes}
+            />
+            {error ? <Text style={styles.paymentError}>{error}</Text> : null}
+          </ScrollView>
+
+          <PrimaryButton
+            label="Enregistrer le paiement"
+            onPress={() => void handleSave()}
+            loading={busy}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -592,5 +947,182 @@ const styles = StyleSheet.create({
   },
   dangerLabel: {
     color: colors.danger,
+  },
+
+  paidBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.successSoft,
+    padding: spacing.md,
+    marginVertical: spacing.sm,
+  },
+  paidBadgeText: {
+    fontSize: fontSize.small,
+    fontWeight: "600",
+    color: colors.success,
+  },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  paymentCount: {
+    fontSize: fontSize.caption,
+    fontWeight: "700",
+    color: colors.mutedSoft,
+  },
+  paymentEmpty: {
+    paddingVertical: spacing.md,
+    fontSize: fontSize.small,
+    color: colors.muted,
+    textAlign: "center",
+  },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  paymentDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  paymentIcon: {
+    height: 34,
+    width: 34,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.successSoft,
+  },
+  paymentBody: {
+    flex: 1,
+    gap: 1,
+  },
+  paymentReceipt: {
+    fontSize: fontSize.small,
+    fontWeight: "600",
+    color: colors.ink,
+  },
+  paymentMeta: {
+    fontSize: fontSize.caption,
+    color: colors.muted,
+  },
+  paymentAmount: {
+    fontSize: fontSize.small,
+    fontWeight: "700",
+    color: colors.ink,
+    fontVariant: ["tabular-nums"],
+  },
+  paymentDelete: {
+    height: 28,
+    width: 28,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.dangerSoft,
+  },
+  paymentDeleteLabel: {
+    fontSize: fontSize.small,
+    color: colors.danger,
+  },
+  paymentLegacyNote: {
+    fontSize: fontSize.caption,
+    lineHeight: 17,
+    color: colors.mutedSoft,
+    paddingTop: spacing.sm,
+  },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: colors.overlay,
+  },
+  paymentSheet: {
+    maxHeight: "90%",
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.md,
+  },
+  handle: {
+    alignSelf: "center",
+    height: 4,
+    width: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.border,
+  },
+  paymentHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+  },
+  paymentHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  paymentTitle: {
+    fontSize: fontSize.heading,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: colors.ink,
+  },
+  paymentSubtitle: {
+    fontSize: fontSize.small,
+    color: colors.muted,
+  },
+  paymentClose: {
+    height: 38,
+    width: 38,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  paymentForm: {
+    flexShrink: 1,
+  },
+  paymentFormContent: {
+    gap: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  paymentMethods: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  paymentNotes: {
+    minHeight: 80,
+    paddingTop: spacing.md,
+    textAlignVertical: "top",
+    lineHeight: 20,
+  },
+  paymentError: {
+    fontSize: fontSize.caption + 1,
+    color: colors.danger,
+  },
+  signature: {
+    width: "100%",
+    height: 120,
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

@@ -181,3 +181,90 @@ export interface DocumentInput {
   conditions: string;
   projectId?: string | null;
 }
+
+export type PhotoPhase = "before" | "during" | "after" | "issue";
+
+export interface ProjectPhoto {
+  id: string;
+  projectId: string;
+  caption: string;
+  room: string;
+  phase: PhotoPhase;
+  tags: string[];
+  measurements: string | null;
+  annotationData: string | null;
+  takenAt: string | null;
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+  url: string | null;
+  thumbnailUrl: string | null;
+}
+
+export interface ProjectActivity {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  actor: "admin" | "client" | "system";
+  actorName: string | null;
+  metadata: string | null;
+  visibility: "internal" | "client";
+  createdAt: number;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: string;
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
+export type TaskPriority = "low" | "normal" | "high";
+
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  dueDate: string | null;
+  completedAt: number | null;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type PaymentMethod = "cash" | "bank_transfer" | "check" | "card" | "other";
+
+export interface Payment {
+  id: string;
+  documentId: string;
+  projectId: string | null;
+  amountCents: number;
+  method: PaymentMethod;
+  receivedAt: string;
+  reference: string;
+  receiptNumber: string;
+  notes: string;
+  createdAt: number;
+}
+
+export interface DocumentApproval {
+  id: string;
+  decision: "accepted" | "refused";
+  signerName: string;
+  signerEmail: string;
+  signatureUrl: string | null;
+  reason: string;
+  documentHash: string;
+  createdAt: number;
+}

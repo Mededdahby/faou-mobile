@@ -139,6 +139,12 @@ export default function PlusScreen() {
           subtitle="Coordonnées et projets liés"
           badge={clientCount > 0 ? String(clientCount) : undefined}
           onPress={() => router.push("/clients")}
+        />
+        <MenuRow
+          icon="people-circle-outline"
+          label="Équipe"
+          subtitle="Membres et assignations"
+          onPress={() => router.push("/equipe")}
           last
         />
       </Section>

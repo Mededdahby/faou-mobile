@@ -3,18 +3,18 @@ import * as Sharing from "expo-sharing";
 import { apiBaseUrl } from "@/api/client";
 import { getStoredToken } from "@/auth/storage";
 
-export async function shareDocumentPdf(id: string, number: string) {
+async function sharePdf(path: string, fileName: string, dialogTitle: string) {
   const token = await getStoredToken();
   if (!token) throw new Error("Session expirée. Reconnectez-vous.");
 
   const directory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
   if (!directory) throw new Error("Stockage indisponible sur cet appareil.");
 
-  const safeName = (number || id).replace(/[^\w.-]+/g, "-");
+  const safeName = (fileName || "document").replace(/[^\w.-]+/g, "-");
   const target = `${directory}${safeName}.pdf`;
 
   const result = await FileSystem.downloadAsync(
-    `${apiBaseUrl}/api/admin/documents/${id}/pdf`,
+    `${apiBaseUrl}${path}`,
     target,
     { headers: { Authorization: `Bearer ${token}` } },
   );
@@ -24,8 +24,28 @@ export async function shareDocumentPdf(id: string, number: string) {
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(result.uri, {
       mimeType: "application/pdf",
-      dialogTitle: number || "Document",
+      dialogTitle: dialogTitle || "Document",
       UTI: "com.adobe.pdf",
     });
   }
+}
+
+export async function shareDocumentPdf(id: string, number: string) {
+  await sharePdf(`/api/admin/documents/${id}/pdf`, number, number);
+}
+
+export async function sharePaymentReceiptPdf(paymentId: string, receiptNumber: string) {
+  await sharePdf(
+    `/api/mobile/v1/payments/${paymentId}/receipt`,
+    receiptNumber || "recu",
+    receiptNumber || "Reçu de paiement",
+  );
+}
+
+export async function shareProjectReportPdf(reportId: string, title: string) {
+  await sharePdf(
+    `/api/mobile/v1/reports/${reportId}/pdf`,
+    title || "rapport-chantier",
+    title || "Rapport de chantier",
+  );
 }

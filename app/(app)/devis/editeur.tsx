@@ -29,6 +29,7 @@ import {
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useSaveDocument } from "@/hooks/queries";
 import { formatMoney, formatMoneyShort } from "@/lib/format";
+import { calculateQuote, type CalculatorLine } from "@/lib/calculator";
 import { getProjectStatus } from "@/lib/status";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
@@ -380,6 +381,187 @@ const LineItemEditor = forwardRef<LineItemHandle, LineItemEditorProps>(
   },
 );
 
+function QuoteCalculator({ onAdd }: { onAdd: (lines: CalculatorLine[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [backsplashLength, setBacksplashLength] = useState("");
+  const [backsplashHeight, setBacksplashHeight] = useState("0.6");
+  const [baseUnits, setBaseUnits] = useState("");
+  const [highUnits, setHighUnits] = useState("");
+  const [islandLength, setIslandLength] = useState("");
+  const [worktopLength, setWorktopLength] = useState("");
+  const [waste, setWaste] = useState("10");
+  const [floorRate, setFloorRate] = useState("450");
+  const [backsplashRate, setBacksplashRate] = useState("650");
+  const [worktopRate, setWorktopRate] = useState("3200");
+  const [baseRate, setBaseRate] = useState("8500");
+  const [highRate, setHighRate] = useState("4800");
+  const [islandRate, setIslandRate] = useState("5500");
+  const [installation, setInstallation] = useState("0");
+
+  function number(value: string) {
+    const parsed = Number(value.replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  const result = calculateQuote({
+    length: number(length),
+    width: number(width),
+    backsplashLength: number(backsplashLength),
+    backsplashHeight: number(backsplashHeight),
+    baseUnits: number(baseUnits),
+    highUnits: number(highUnits),
+    islandLength: number(islandLength),
+    worktopLength: number(worktopLength),
+    wastePercent: number(waste),
+    rates: {
+      floorPerM2: number(floorRate),
+      backsplashPerM2: number(backsplashRate),
+      worktopPerMl: number(worktopRate),
+      baseUnit: number(baseRate),
+      highUnit: number(highRate),
+      islandPerMl: number(islandRate),
+      installation: number(installation),
+    },
+  });
+
+  function add() {
+    if (result.lines.length === 0) return;
+    onAdd(result.lines);
+  }
+
+  const field = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    placeholder: string,
+  ) => (
+    <FormField
+      label={label}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      keyboardType="decimal-pad"
+    />
+  );
+
+  return (
+    <FormSection
+      title="Calculateur de surfaces"
+      description="Estimez les quantités à partir des dimensions. Les prix sont indicatifs et modifiables."
+    >
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen((current) => !current)}
+        style={({ pressed }) => [styles.calculatorToggle, pressed && styles.pressed]}
+      >
+        <View style={styles.calculatorToggleText}>
+          <Text style={styles.calculatorToggleTitle}>
+            {open ? "Masquer le calculateur" : "Ouvrir le calculateur"}
+          </Text>
+          <Text style={styles.calculatorToggleHint}>
+            Dimensions, modules, matériaux et finitions
+          </Text>
+        </View>
+        <Ionicons
+          name={open ? "chevron-up" : "chevron-down"}
+          size={18}
+          color={colors.primary}
+        />
+      </Pressable>
+
+      {open ? (
+        <>
+          <Text style={styles.calculatorLabel}>Dimensions</Text>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Longueur (m)", length, setLength, "3.2")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Largeur (m)", width, setWidth, "2.4")}
+            </View>
+          </View>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Crédence (ml)", backsplashLength, setBacksplashLength, "3.6")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Hauteur crédence (m)", backsplashHeight, setBacksplashHeight, "0.6")}
+            </View>
+          </View>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Meubles bas (u)", baseUnits, setBaseUnits, "4")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Meubles hauts (u)", highUnits, setHighUnits, "3")}
+            </View>
+          </View>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Îlot (ml)", islandLength, setIslandLength, "0")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Plan de travail (ml)", worktopLength, setWorktopLength, "3.6")}
+            </View>
+          </View>
+          {field("Chute / perte (%)", waste, setWaste, "10")}
+
+          <Text style={styles.calculatorLabel}>Prix indicatifs (MAD)</Text>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Sol / m²", floorRate, setFloorRate, "450")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Crédence / m²", backsplashRate, setBacksplashRate, "650")}
+            </View>
+          </View>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Plan / ml", worktopRate, setWorktopRate, "3200")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Meuble bas / u", baseRate, setBaseRate, "8500")}
+            </View>
+          </View>
+          <View style={styles.calculatorRow}>
+            <View style={styles.calculatorColumn}>
+              {field("Meuble haut / u", highRate, setHighRate, "4800")}
+            </View>
+            <View style={styles.calculatorColumn}>
+              {field("Îlot / ml", islandRate, setIslandRate, "5500")}
+            </View>
+          </View>
+          {field("Installation & pose (MAD)", installation, setInstallation, "0")}
+
+          <View style={styles.calculatorTotal}>
+            <View>
+              <Text style={styles.calculatorTotalLabel}>
+                {result.lines.length} ligne{result.lines.length === 1 ? "" : "s"} calculée
+                {result.lines.length === 1 ? "" : "s"}
+              </Text>
+              <Text style={styles.calculatorTotalValue}>
+                {formatMoney(result.totalCents)}
+              </Text>
+            </View>
+            <PrimaryButton
+              label="Ajouter au devis"
+              onPress={add}
+              disabled={result.lines.length === 0}
+              style={styles.calculatorAdd}
+            />
+          </View>
+          <Text style={styles.calculatorNote}>
+            Estimation indicative. Vérifiez les quantités et les prix avant de valider le
+            devis.
+          </Text>
+        </>
+      ) : null}
+    </FormSection>
+  );
+}
+
 function DevisForm({
   id,
   reference,
@@ -511,6 +693,22 @@ function DevisForm({
 
   function addPreset(label: string, price: string) {
     appendItem(label, price);
+  }
+
+  function addCalculatorLines(lines: CalculatorLine[]) {
+    if (lines.length === 0) return;
+    markFormDirty();
+    setForm((current) => ({
+      ...current,
+      items: [
+        ...current.items,
+        ...lines.map((line) => ({
+          ...newItem(),
+          label: line.label,
+          price: String(line.amountCents / 100),
+        })),
+      ],
+    }));
   }
 
   function addCustomItem() {
@@ -905,6 +1103,8 @@ function DevisForm({
 
         {step === 1 ? (
           <>
+            <QuoteCalculator onAdd={addCalculatorLines} />
+
             <FormSection
               title="Ajout rapide"
               description="Touchez une prestation pour l’ajouter au devis."
@@ -1356,5 +1556,73 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+
+  calculatorToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.md,
+  },
+  calculatorToggleText: {
+    flex: 1,
+    gap: 2,
+  },
+  calculatorToggleTitle: {
+    fontSize: fontSize.small,
+    fontWeight: "600",
+    color: colors.ink,
+  },
+  calculatorToggleHint: {
+    fontSize: fontSize.caption,
+    color: colors.muted,
+  },
+  calculatorLabel: {
+    fontSize: fontSize.caption,
+    fontWeight: "700",
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+    color: colors.mutedSoft,
+    marginTop: spacing.xs,
+  },
+  calculatorRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  calculatorColumn: {
+    flex: 1,
+  },
+  calculatorTotal: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    marginTop: spacing.xs,
+  },
+  calculatorTotalLabel: {
+    fontSize: fontSize.caption,
+    color: colors.muted,
+  },
+  calculatorTotalValue: {
+    fontSize: fontSize.title,
+    fontWeight: "700",
+    color: colors.ink,
+    fontVariant: ["tabular-nums"],
+  },
+  calculatorAdd: {
+    minHeight: 44,
+  },
+  calculatorNote: {
+    fontSize: fontSize.caption,
+    lineHeight: 17,
+    color: colors.mutedSoft,
   },
 });
