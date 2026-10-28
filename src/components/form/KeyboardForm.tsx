@@ -37,9 +37,11 @@ const FormKeyboardContext = createContext<FormKeyboardValue | null>(null);
 export function KeyboardForm({
   children,
   footer,
+  scrollKey,
 }: {
   children: ReactNode;
   footer?: ReactNode;
+  scrollKey?: string | number;
 }) {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -55,6 +57,10 @@ export function KeyboardForm({
       hide.remove();
     };
   }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [scrollKey]);
 
   const scrollToField = useCallback((node: ComponentRef<typeof View> | null) => {
     const content = contentRef.current;
@@ -197,6 +203,8 @@ export function FormFooter({
   disabled = false,
   error,
   summary,
+  secondaryLabel,
+  onSecondary,
 }: {
   submitLabel: string;
   onSubmit: () => void;
@@ -204,6 +212,8 @@ export function FormFooter({
   disabled?: boolean;
   error?: string;
   summary?: { label: string; value: string };
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }) {
   return (
     <View style={styles.footerContent}>
@@ -219,12 +229,30 @@ export function FormFooter({
           <Text style={styles.summaryValue}>{summary.value}</Text>
         </View>
       ) : null}
-      <PrimaryButton
-        label={submitLabel}
-        onPress={onSubmit}
-        loading={loading}
-        disabled={disabled}
-      />
+      {secondaryLabel && onSecondary ? (
+        <View style={styles.footerActions}>
+          <PrimaryButton
+            label={secondaryLabel}
+            variant="outline"
+            onPress={onSecondary}
+            style={styles.footerSecondary}
+          />
+          <PrimaryButton
+            label={submitLabel}
+            onPress={onSubmit}
+            loading={loading}
+            disabled={disabled}
+            style={styles.footerPrimary}
+          />
+        </View>
+      ) : (
+        <PrimaryButton
+          label={submitLabel}
+          onPress={onSubmit}
+          loading={loading}
+          disabled={disabled}
+        />
+      )}
     </View>
   );
 }
@@ -322,5 +350,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.ink,
     fontVariant: ["tabular-nums"],
+  },
+  footerActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  footerSecondary: {
+    flex: 1,
+  },
+  footerPrimary: {
+    flex: 1.5,
   },
 });

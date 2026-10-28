@@ -60,7 +60,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     if (__DEV__) {
       console.warn(`API request failed: ${method} ${API_URL}${path}`, error);
     }
-    throw new ApiError(0, "Connexion impossible. Vérifiez votre réseau.");
+    throw new ApiError(
+      0,
+      __DEV__
+        ? "Serveur d’administration injoignable. Lancez « pnpm dev » dans kitchen-landing (port 3000)."
+        : "Connexion impossible. Vérifiez votre réseau.",
+    );
   });
 
   if (response.status === 401) {

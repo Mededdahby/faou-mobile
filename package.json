@@ -13,14 +13,18 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "dev:all": "node scripts/dev-all.mjs",
+    "dev:clean": "node scripts/dev-all.mjs --clean"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
+    "@react-native-community/datetimepicker": "9.2.1",
     "@tanstack/react-query": "~5.104.5",
     "convex": "^1.48.0",
     "date-fns": "^4.4.0",
     "expo": "~58.0.19",
+    "expo-clipboard": "58.0.4",
     "expo-constants": "~58.0.13",
     "expo-file-system": "~58.0.11",
     "expo-font": "~58.0.10",

@@ -3,14 +3,13 @@ import { useState } from "react";
 import {
   Alert,
   Pressable,
-  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import type { CommercialDocument, DocumentStatus } from "@/api/types";
-import { apiBaseUrl } from "@/api/client";
 import { Card, Field, PrimaryButton, Screen, StatusPill } from "@/components/ui";
+import { DateField } from "@/components/form/DateField";
 import {
   Chip,
   ErrorBlock,
@@ -26,10 +25,10 @@ import {
   useDeleteDocument,
   useUpdateDocumentFinance,
 } from "@/hooks/queries";
-import { api } from "@/api/endpoints";
 import { formatDate, formatMoney } from "@/lib/format";
-import { callPhone, openDirections, openUrl, sendEmail } from "@/lib/links";
+import { callPhone, openDirections, sendEmail } from "@/lib/links";
 import { shareDocumentPdf } from "@/lib/pdf";
+import { ShareDocumentSheet } from "@/components/domain/ShareDocumentSheet";
 import { getDocumentStatus } from "@/lib/status";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
 
@@ -105,12 +104,9 @@ function DocumentDetail({
     document.amountPaidCents ? String(document.amountPaidCents / 100) : "",
   );
   const [dueDate, setDueDate] = useState(document.dueDate ?? "");
-  const [generatedLink, setGeneratedLink] = useState("");
-  const [busyAction, setBusyAction] = useState<"pdf" | "share" | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
-  const shareLink =
-    generatedLink ||
-    (document.shareToken ? `${apiBaseUrl}/partage/${document.shareToken}` : "");
   const isInvoice = document.kind === "invoice";
   const status = getDocumentStatus(document.status);
   const total = documentTotal(document.items);
@@ -155,31 +151,14 @@ function DocumentDetail({
     }
   }
 
-  async function handleShare() {
-    setBusyAction("share");
-    try {
-      const result = await api.documents.share(document._id);
-      const link = `${apiBaseUrl}/partage/${result.token}`;
-      setGeneratedLink(link);
-      await Share.share({
-        message: `${isInvoice ? "Facture" : "Devis"} ${document.number} — FAOU DESIGN\n${link}`,
-        url: link,
-      });
-    } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Partage impossible.");
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
   async function handlePdf() {
-    setBusyAction("pdf");
+    setPdfLoading(true);
     try {
       await shareDocumentPdf(document._id, document.number);
     } catch (error) {
       Alert.alert("Erreur", error instanceof Error ? error.message : "PDF indisponible.");
     } finally {
-      setBusyAction(null);
+      setPdfLoading(false);
     }
   }
 
@@ -225,8 +204,9 @@ function DocumentDetail({
   }
 
   return (
-    <Screen scroll>
-      <PageHeader
+    <>
+      <Screen scroll>
+        <PageHeader
         title={document.number}
         subtitle={`${isInvoice ? "Facture" : "Devis"} · ${formatDate(document.date)}`}
         right={<StatusPill label={status.label} tone={status.tone} />}
@@ -247,15 +227,14 @@ function DocumentDetail({
         />
         <QuickAction
           icon="share-social-outline"
-          label={busyAction === "share" ? "Partage…" : "Partager"}
-          onPress={() => void handleShare()}
-          disabled={busyAction !== null}
+          label="Partager"
+          onPress={() => setShareOpen(true)}
         />
         <QuickAction
           icon="download-outline"
-          label={busyAction === "pdf" ? "PDF…" : "PDF"}
+          label={pdfLoading ? "PDF…" : "PDF"}
           onPress={() => void handlePdf()}
-          disabled={busyAction !== null}
+          disabled={pdfLoading}
         />
       </QuickActions>
 
@@ -375,11 +354,14 @@ function DocumentDetail({
           ) : null}
           <View style={styles.fieldRow}>
             <View style={styles.fieldGrow}>
-              <Field
+              <DateField
                 label="Échéance"
+                optional
                 value={dueDate}
-                onChangeText={setDueDate}
-                placeholder="AAAA-MM-JJ"
+                onChange={(value) => setDueDate(value ?? "")}
+                placeholder="Choisir une date"
+                hint="Date limite de paiement."
+                allowClear
               />
             </View>
             <View style={styles.fieldButton}>
@@ -415,19 +397,6 @@ function DocumentDetail({
         </View>
       </Card>
 
-      {shareLink ? (
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Lien de partage</Text>
-          <Text style={styles.link} selectable onPress={() => void openUrl(shareLink)}>
-            {shareLink}
-          </Text>
-          <PrimaryButton
-            label="Ouvrir dans le navigateur"
-            variant="outline"
-            onPress={() => void openUrl(shareLink)}
-          />
-        </Card>
-      ) : null}
 
       <View style={styles.actions}>
         {!isInvoice ? (
@@ -447,7 +416,12 @@ function DocumentDetail({
           <Text style={[styles.secondaryLabel, styles.dangerLabel]}>Supprimer le document</Text>
         </Pressable>
       </View>
-    </Screen>
+      </Screen>
+      <ShareDocumentSheet
+        document={shareOpen ? document : null}
+        onClose={() => setShareOpen(false)}
+      />
+    </>
   );
 }
 

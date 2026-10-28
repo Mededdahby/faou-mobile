@@ -10,6 +10,7 @@ import {
   FormSection,
   KeyboardForm,
 } from "@/components/form/KeyboardForm";
+import { DateField } from "@/components/form/DateField";
 import { SelectField } from "@/components/form/SelectField";
 import { Screen } from "@/components/ui";
 import type { FieldInputRef } from "@/components/ui/Field";
@@ -58,8 +59,6 @@ interface FormState {
 
 interface FormErrors {
   name?: string;
-  startDate?: string;
-  dueDate?: string;
   budget?: string;
 }
 
@@ -86,13 +85,6 @@ function budgetToCents(value: string) {
 
 function centsToInput(cents: number) {
   return cents > 0 ? String(cents / 100) : "";
-}
-
-function isDate(value: string) {
-  if (!value) return true;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T12:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function initialFromProject(project: Project): FormState {
@@ -173,8 +165,6 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
 
   const nameRef = useRef<FieldInputRef>(null);
   const clientNameRef = useRef<FieldInputRef>(null);
-  const startDateRef = useRef<FieldInputRef>(null);
-  const dueDateRef = useRef<FieldInputRef>(null);
   const budgetRef = useRef<FieldInputRef>(null);
   const cityRef = useRef<FieldInputRef>(null);
   const addressRef = useRef<FieldInputRef>(null);
@@ -195,9 +185,7 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
     markDirty();
     setForm((current) => ({ ...current, [key]: value }));
     const errorKey: keyof FormErrors | null =
-      key === "name" || key === "startDate" || key === "dueDate" || key === "budget"
-        ? (key as keyof FormErrors)
-        : null;
+      key === "name" || key === "budget" ? (key as keyof FormErrors) : null;
     if (!errorKey) return;
     setErrors((current) =>
       current[errorKey] ? { ...current, [errorKey]: undefined } : current,
@@ -227,12 +215,6 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
     if (form.name.trim().length < 2) {
       nextErrors.name = "Indiquez le nom du projet.";
     }
-    if (!isDate(form.startDate)) {
-      nextErrors.startDate = "Utilisez le format AAAA-MM-JJ.";
-    }
-    if (!isDate(form.dueDate)) {
-      nextErrors.dueDate = "Utilisez le format AAAA-MM-JJ.";
-    }
     const budgetCents = form.budget.trim() ? budgetToCents(form.budget) : 0;
     if (Number.isNaN(budgetCents)) {
       nextErrors.budget = "Indiquez un budget valide.";
@@ -241,14 +223,6 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
     setErrors(nextErrors);
     if (nextErrors.name) {
       nameRef.current?.focus();
-      return;
-    }
-    if (nextErrors.startDate) {
-      startDateRef.current?.focus();
-      return;
-    }
-    if (nextErrors.dueDate) {
-      dueDateRef.current?.focus();
       return;
     }
     if (nextErrors.budget) {
@@ -360,7 +334,7 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
             autoCapitalize="words"
             returnKeyType="next"
             blurOnSubmit={false}
-            onSubmitEditing={() => startDateRef.current?.focus()}
+            onSubmitEditing={() => budgetRef.current?.focus()}
             hint="Utilisé dans les listes et sur les documents."
           />
         </FormSection>
@@ -375,36 +349,23 @@ function ProjectForm({ id, initial }: { id?: string; initial: FormState }) {
         </FormSection>
 
         <FormSection title="Planning" description="Les dates restent modifiables à tout moment.">
-          <FormField
+          <DateField
             label="Date de début"
             optional
-            inputRef={startDateRef}
+            allowClear
             value={form.startDate}
-            onChangeText={(value) => update("startDate", value)}
-            placeholder="AAAA-MM-JJ"
-            maxLength={10}
-            keyboardType="numbers-and-punctuation"
-            autoCapitalize="none"
-            returnKeyType="next"
-            blurOnSubmit={false}
-            onSubmitEditing={() => dueDateRef.current?.focus()}
-            error={errors.startDate}
-            hint="Format AAAA-MM-JJ, par exemple 2026-11-15."
+            onChange={(value) => update("startDate", value ?? "")}
+            placeholder="Choisir une date"
+            hint="Date de démarrage prévue du chantier."
           />
-          <FormField
+          <DateField
             label="Date d’échéance"
             optional
-            inputRef={dueDateRef}
+            allowClear
             value={form.dueDate}
-            onChangeText={(value) => update("dueDate", value)}
-            placeholder="AAAA-MM-JJ"
-            maxLength={10}
-            keyboardType="numbers-and-punctuation"
-            autoCapitalize="none"
-            returnKeyType="next"
-            blurOnSubmit={false}
-            onSubmitEditing={() => budgetRef.current?.focus()}
-            error={errors.dueDate}
+            onChange={(value) => update("dueDate", value ?? "")}
+            placeholder="Choisir une date"
+            hint="Date de livraison ou de fin prévue."
           />
         </FormSection>
 
