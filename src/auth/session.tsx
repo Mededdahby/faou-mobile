@@ -10,6 +10,7 @@ import {
 } from "react";
 import { setUnauthorizedHandler } from "@/api/client";
 import { api } from "@/api/endpoints";
+import { unregisterPushToken } from "@/notifications/push";
 import { clearSession, getStoredEmail, getStoredToken, storeSession } from "./storage";
 
 type SessionStatus = "loading" | "authenticated" | "anonymous";
@@ -34,6 +35,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(DEV_BYPASS ? "mode aperçu" : null);
 
   const signOut = useCallback(async () => {
+    await unregisterPushToken();
     await clearSession();
     queryClient.clear();
     setEmail(null);

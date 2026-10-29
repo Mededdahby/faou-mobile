@@ -268,3 +268,58 @@ export interface DocumentApproval {
   documentHash: string;
   createdAt: number;
 }
+
+export type NotificationType =
+  | "lead.new"
+  | "quote.accepted"
+  | "quote.refused"
+  | "task.due"
+  | "task.overdue"
+  | "invoice.due"
+  | "invoice.overdue"
+  | "project.due"
+  | "payment.recorded"
+  | "digest"
+  | "system";
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  route: string;
+  entityType: string;
+  entityId: string;
+  projectId: string | null;
+  read: boolean;
+  readAt: number | null;
+  createdAt: number;
+}
+
+export interface NotificationPage {
+  items: AppNotification[];
+  unreadCount: number;
+}
+
+export interface NotificationPreferences {
+  id: string | null;
+  leads: boolean;
+  approvals: boolean;
+  tasks: boolean;
+  invoices: boolean;
+  projects: boolean;
+  quietHoursStart?: number | null;
+  quietHoursEnd?: number | null;
+  timezone: string;
+}
+
+export interface UpcomingTask {
+  id: string;
+  projectId: string;
+  projectName: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeName: string | null;
+  dueDate: string | null;
+}

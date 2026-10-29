@@ -8,6 +8,7 @@ import type {
   DocumentPage,
   DocumentStatus,
   LoginInput,
+  NotificationPreferences,
   Payment,
   PaymentMethod,
   PhotoPhase,
@@ -270,6 +271,47 @@ export const api = {
       apiRequest<{ success: boolean }>("/api/mobile/v1/payments", {
         method: "DELETE",
         body: { id },
+      }),
+  },
+
+  notifications: {
+    registerDevice: (input: {
+      token: string;
+      platform: "android" | "ios";
+      deviceName: string;
+      appVersion: string;
+    }) =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/devices", {
+        method: "POST",
+        body: input,
+      }),
+    unregisterDevice: (token: string) =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/devices", {
+        method: "DELETE",
+        body: { token },
+      }),
+    markRead: (id: string) =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/read", {
+        method: "PATCH",
+        body: { id },
+      }),
+    markAllRead: () =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/read", {
+        method: "PATCH",
+        body: { all: true },
+      }),
+    preferences: () =>
+      apiRequest<{ data: NotificationPreferences }>(
+        "/api/mobile/v1/notifications/preferences",
+      ).then((result) => result.data),
+    savePreferences: (input: Partial<NotificationPreferences>) =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/preferences", {
+        method: "PATCH",
+        body: input,
+      }),
+    test: () =>
+      apiRequest<{ success: boolean }>("/api/mobile/v1/notifications/test", {
+        method: "POST",
       }),
   },
 

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { apiBaseUrl } from "@/api/client";
 import { useSession } from "@/auth/session";
 import { Card, PrimaryButton, Screen } from "@/components/ui";
+import { NotificationSettingsCard } from "@/components/domain/NotificationSettingsCard";
 import { colors, fontSize, spacing } from "@/theme/tokens";
 
 export default function ReglagesScreen() {
@@ -32,6 +33,8 @@ export default function ReglagesScreen() {
             </Text>
           )}
         </Card>
+
+        <NotificationSettingsCard />
 
         <Card>
           <Text style={styles.label}>API</Text>

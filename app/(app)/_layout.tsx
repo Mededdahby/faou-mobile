@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSession } from "@/auth/session";
+import { BrandLoader } from "@/components/domain/BrandLoader";
 import { colors } from "@/theme/tokens";
 
 export { RouteErrorBoundary as ErrorBoundary } from "@/components/domain/RouteErrorBoundary";
@@ -11,7 +12,7 @@ export default function AppLayout() {
   if (status === "loading") {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color={colors.primary} />
+        <BrandLoader label="Chargement…" />
       </View>
     );
   }
@@ -48,6 +49,7 @@ export default function AppLayout() {
       <Stack.Screen name="devis/index" options={{ title: "Devis & factures" }} />
       <Stack.Screen name="devis/[id]" options={{ title: "Document" }} />
       <Stack.Screen name="devis/editeur" options={{ title: "Devis" }} />
+      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
       <Stack.Screen name="reglages" options={{ title: "Réglages", presentation: "modal" }} />
     </Stack>
   );

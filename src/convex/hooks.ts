@@ -4,6 +4,7 @@ import type {
   Client,
   CommercialDocument,
   DocumentApproval,
+  NotificationPage,
   Project,
   Payment,
   ProjectActivity,
@@ -11,6 +12,7 @@ import type {
   ProjectTask,
   Submission,
   TeamMember,
+  UpcomingTask,
 } from "@/api/types";
 import { convexAdminSecret, isConvexConfigured } from "./client";
 
@@ -107,4 +109,18 @@ export function useLiveDocumentApproval(documentId: string | undefined) {
       ? { ...secretArgs, documentId }
       : skip,
   ) as DocumentApproval | null | undefined;
+}
+
+export function useLiveNotifications(limit = 50) {
+  return useQuery(
+    convexApi.notifications.listNotifications,
+    isConvexConfigured ? { ...secretArgs, limit } : skip,
+  ) as NotificationPage | undefined;
+}
+
+export function useLiveUpcomingTasks(days = 45) {
+  return useQuery(
+    convexApi.mobileTools.listUpcomingTasks,
+    isConvexConfigured ? { secret: convexAdminSecret, days } : skip,
+  ) as UpcomingTask[] | undefined;
 }

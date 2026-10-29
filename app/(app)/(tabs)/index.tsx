@@ -14,6 +14,7 @@ import type { CommercialDocument } from "@/api/types";
 import { useSession } from "@/auth/session";
 import { ActivityItem } from "@/components/domain/ActivityItem";
 import { BrandMark } from "@/components/domain/BrandMark";
+import { NotificationBell } from "@/components/domain/NotificationBell";
 import { ProjectCard } from "@/components/domain/ProjectCard";
 import { QuickCreateSheet } from "@/components/domain/QuickCreateSheet";
 import { QuickStat } from "@/components/domain/QuickStat";
@@ -155,6 +156,7 @@ export default function AccueilScreen() {
         <View style={styles.header}>
           <BrandMark />
           <View style={styles.headerActions}>
+            <NotificationBell />
             <IconButton
               icon="mail-unread-outline"
               label="Demandes"

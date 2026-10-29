@@ -3,7 +3,11 @@ import { clearStoredToken, getStoredToken } from "@/auth/storage";
 
 const configuredApiUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const devHost = Constants.expoConfig?.hostUri?.replace(/:\d+$/, "") ?? "";
-const API_URL = __DEV__ && devHost ? `http://${devHost}:3000` : configuredApiUrl;
+const useConfiguredApiInDev = configuredApiUrl.startsWith("https://");
+const API_URL =
+  __DEV__ && devHost && !useConfiguredApiInDev
+    ? `http://${devHost}:3000`
+    : configuredApiUrl;
 
 export const apiBaseUrl = API_URL;
 

@@ -1,13 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
+import { BrandLoader } from "./BrandLoader";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -130,7 +125,7 @@ export function Chip({
 export function LoadingBlock() {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color={colors.primary} />
+      <BrandLoader label="Chargement…" />
     </View>
   );
 }

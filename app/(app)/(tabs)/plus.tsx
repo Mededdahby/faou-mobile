@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSession } from "@/auth/session";
 import { PageHeader } from "@/components/domain/DetailKit";
 import { Avatar, Card, Screen } from "@/components/ui";
-import { useLiveClients, useLiveDocuments } from "@/convex/hooks";
+import { useLiveClients, useLiveDocuments, useLiveNotifications } from "@/convex/hooks";
 import { useSummary } from "@/hooks/queries";
 import { openUrl } from "@/lib/links";
 import { colors, fontSize, radius, spacing } from "@/theme/tokens";
@@ -74,10 +74,12 @@ export default function PlusScreen() {
   const summary = useSummary();
   const documents = useLiveDocuments();
   const clients = useLiveClients();
+  const notifications = useLiveNotifications(1);
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
   const documentCount = documents?.page.length ?? 0;
   const clientCount = clients?.length ?? 0;
+  const unreadNotifications = notifications?.unreadCount ?? 0;
 
   function handleLogout() {
     Alert.alert("Se déconnecter", "Vous devrez vous reconnecter pour accéder à l’application.", [
@@ -139,6 +141,13 @@ export default function PlusScreen() {
           subtitle="Coordonnées et projets liés"
           badge={clientCount > 0 ? String(clientCount) : undefined}
           onPress={() => router.push("/clients")}
+        />
+        <MenuRow
+          icon="notifications-outline"
+          label="Notifications"
+          subtitle="Demandes, devis et rappels"
+          badge={unreadNotifications > 0 ? String(unreadNotifications) : undefined}
+          onPress={() => router.push("/notifications")}
         />
         <MenuRow
           icon="people-circle-outline"

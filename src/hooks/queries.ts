@@ -4,6 +4,7 @@ import type {
   ClientInput,
   DocumentInput,
   DocumentStatus,
+  NotificationPreferences,
   ProjectInput,
   SubmissionStatus,
 } from "@/api/types";
@@ -14,6 +15,7 @@ export const queryKeys = {
   projects: ["projects"] as const,
   clients: ["clients"] as const,
   documents: ["documents"] as const,
+  notificationPreferences: ["notification-preferences"] as const,
 };
 
 export function useSummary() {
@@ -194,6 +196,31 @@ export function useDeleteDocument() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.documents });
       void queryClient.invalidateQueries({ queryKey: queryKeys.summary });
+    },
+  });
+}
+
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: queryKeys.notificationPreferences,
+    queryFn: api.notifications.preferences,
+  });
+}
+
+export function useSaveNotificationPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: Partial<NotificationPreferences>) =>
+      api.notifications.savePreferences(input),
+    onSuccess: (_result, input) => {
+      queryClient.setQueryData<NotificationPreferences | undefined>(
+        queryKeys.notificationPreferences,
+        (current) => (current ? { ...current, ...input } : current),
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notificationPreferences,
+      });
     },
   });
 }
